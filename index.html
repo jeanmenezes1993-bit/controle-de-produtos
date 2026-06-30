@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Produtos — Auditoria</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161d26; --panel2:#1c2530; --line:#28323f;
+    --ink:#e8edf2; --mut:#8a97a6; --brand:#3ba776; --brand2:#2d8a60;
+    --warn:#e0a13a; --danger:#e05a4f; --ok:#3ba776;
+    --radius:12px; --font:'Segoe UI',system-ui,sans-serif;
+  }
+  [data-theme="light"]{
+    --bg:#f3f5f7; --panel:#ffffff; --panel2:#f7f9fb; --line:#dde3ea;
+    --ink:#1a232e; --mut:#5d6a78;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:14px}
+
+  #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+  .login-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:34px 30px;width:340px}
+  .login-card h1{margin:0 0 4px;font-size:20px}
+  .login-card p{margin:0 0 22px;color:var(--mut);font-size:13px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
+  .field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink)}
+  .btn{padding:11px 16px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-weight:600;width:100%}
+  .btn:hover{background:var(--brand2)}
+  .login-err{color:var(--danger);font-size:13px;min-height:18px;margin-top:6px}
+
+  #app{display:none}
+  .topbar{display:flex;align-items:center;gap:14px;padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .topbar .logo{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--brand)}
+  .spacer{flex:1}
+  .top-btn{background:transparent;border:1px solid var(--line);color:var(--ink);padding:8px 12px;border-radius:8px;font-size:13px}
+  .top-btn:hover{background:var(--panel2)}
+  .user-mail{color:var(--mut);font-size:12px}
+
+  .tabs{display:flex;gap:4px;padding:10px 20px 0;background:var(--panel);overflow-x:auto;border-bottom:1px solid var(--line)}
+  .tab{padding:9px 16px;border:none;background:transparent;color:var(--mut);font-size:13px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+  .tab.active{color:var(--ink);border-bottom-color:var(--brand)}
+  .tab:hover{color:var(--ink)}
+
+  .view{padding:22px 20px;max-width:1320px;margin:0 auto}
+  .view.hidden{display:none}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .kpi .label{color:var(--mut);font-size:12px;margin-bottom:8px}
+  .kpi .value{font-size:28px;font-weight:700}
+  .kpi.warn .value{color:var(--warn)} .kpi.danger .value{color:var(--danger)} .kpi.ok .value{color:var(--ok)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px}
+  .panel h2{margin:0 0 14px;font-size:15px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .panel-head h2{margin:0}
+
+  .audit-meta{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px}
+  .audit-meta .field{margin:0;min-width:180px}
+  .audit-meta input{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink)}
+  .next-date{color:var(--mut);font-size:13px}
+  .next-date b{color:var(--brand)}
+
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  td input,td select,td textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--ink)}
+  td textarea{resize:vertical;min-height:34px}
+  td input[readonly]{background:transparent;border-color:transparent;font-weight:700;text-align:center}
+  .row-missing{background:rgba(224,90,79,.07)}
+  .div-pos{color:var(--warn)!important} .div-neg{color:var(--danger)!important} .div-zero{color:var(--ok)!important}
+  .icon-btn{background:transparent;border:none;color:var(--mut);font-size:16px;padding:4px 8px;border-radius:6px}
+  .icon-btn:hover{background:var(--panel2);color:var(--danger)}
+  .add-row{margin-top:12px}
+  .btn-sm{padding:8px 14px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-weight:600;font-size:13px}
+  .btn-sm:hover{background:var(--brand2)}
+  .btn-sm.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .btn-sm.ghost:hover{background:var(--panel2)}
+
+  .empty{color:var(--mut);text-align:center;padding:30px;font-size:13px}
+  .days-left{font-weight:700}
+  .days-left.urgent{color:var(--danger)} .days-left.soon{color:var(--warn)} .days-left.calm{color:var(--ok)}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--brand);padding:12px 18px;border-radius:8px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .25s;z-index:60}
+  .toast.show{opacity:1}
+  .toast.err{border-left-color:var(--danger)}
+
+  @media(max-width:640px){ .view{padding:16px 12px} .kpi .value{font-size:22px} }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-card">
+    <h1>Controle de Produtos</h1>
+    <p>Acesso à auditoria</p>
+    <div class="field"><label>E-mail</label><input id="li-email" type="email" autocomplete="username"></div>
+    <div class="field"><label>Senha</label><input id="li-pass" type="password" autocomplete="current-password"></div>
+    <button class="btn" id="li-btn">Entrar</button>
+    <div class="login-err" id="li-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="logo"><span class="dot"></span> Controle de Produtos</div>
+    <div class="spacer"></div>
+    <span class="user-mail" id="user-mail"></span>
+    <button class="top-btn" id="theme-btn">🌙 Tema</button>
+    <button class="top-btn" id="logout-btn">Sair</button>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="view" id="view-dash">
+    <div class="kpis" id="kpi-row"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Produtos não encontrados — prazo de 30 dias</h2>
+        <button class="btn-sm ghost" id="refresh-btn">Atualizar</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Produto</th><th>Tela</th><th>Responsável</th>
+            <th>Motivo</th><th>Data auditoria</th><th>Prazo final</th><th>Dias restantes</th>
+          </tr></thead>
+          <tbody id="dash-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="dash-empty" style="display:none">Nenhum produto pendente. Tudo encontrado. ✅</div>
+    </div>
+  </div>
+
+  <div id="screens"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://qxsmxxposrqdwnpdrlho.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4c214eHBvc3JxZHducGRybGhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDc3OTksImV4cCI6MjA5NDE4Mzc5OX0.VbRTL8HieeUfpgk8bFcj7XefbStyWsF-CT1MlVxkC1A';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const TELAS = [
+  {id:1, nome:'Tela 1'},{id:2, nome:'Tela 2'},{id:3, nome:'Tela 3'},
+  {id:4, nome:'Tela 4'},{id:5, nome:'Tela 5'},{id:6, nome:'Tela 6'},
+];
+const PRAZO_DIAS = 30;
+
+const $ = s => document.querySelector(s);
+function toast(msg, err){
+  const t=$('#toast'); t.textContent=msg; t.className='toast show'+(err?' err':'');
+  setTimeout(()=>t.className='toast',2600);
+}
+function hoje(){ return new Date().toISOString().slice(0,10); }
+function addDays(dateStr, d){
+  if(!dateStr) return '';
+  const dt=new Date(dateStr+'T00:00:00'); dt.setDate(dt.getDate()+d);
+  return dt.toISOString().slice(0,10);
+}
+function fmt(dateStr){
+  if(!dateStr) return '—';
+  const [y,m,d]=dateStr.split('-'); return `${d}/${m}/${y}`;
+}
+function diasRestantes(prazoStr){
+  if(!prazoStr) return null;
+  const prazo=new Date(prazoStr+'T00:00:00'); const now=new Date(hoje()+'T00:00:00');
+  return Math.round((prazo-now)/86400000);
+}
+function esc(s){ return (s??'').toString().replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+$('#li-btn').onclick = login;
+$('#li-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
+async function login(){
+  const email=$('#li-email').value.trim(), pass=$('#li-pass').value;
+  $('#li-err').textContent='';
+  if(!email||!pass){ $('#li-err').textContent='Preencha e-mail e senha.'; return; }
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('#li-err').textContent='E-mail ou senha inválidos.'; return; }
+  startApp();
+}
+$('#logout-btn').onclick = async ()=>{ await sb.auth.signOut(); location.reload(); };
+
+async function checkSession(){
+  const {data}=await sb.auth.getSession();
+  if(data.session) startApp();
+}
+async function startApp(){
+  const {data}=await sb.auth.getUser();
+  $('#user-mail').textContent = data.user?.email || '';
+  $('#login').style.display='none';
+  $('#app').style.display='block';
+  buildTabs(); buildScreens();
+  await loadAll();
+  showView('dash');
+}
+
+$('#theme-btn').onclick=()=>{
+  const cur=document.documentElement.getAttribute('data-theme')==='light'?'':'light';
+  document.documentElement.setAttribute('data-theme',cur);
+  localStorage.setItem('cp-theme',cur);
+};
+(function(){ const t=localStorage.getItem('cp-theme'); if(t) document.documentElement.setAttribute('data-theme',t); })();
+
+function buildTabs(){
+  const wrap=$('#tabs'); wrap.innerHTML='';
+  const dash=document.createElement('button');
+  dash.className='tab active'; dash.textContent='Dashboard';
+  dash.onclick=()=>showView('dash'); wrap.appendChild(dash);
+  TELAS.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='tab'; b.textContent=t.nome;
+    b.onclick=()=>showView('tela'+t.id); wrap.appendChild(b);
+  });
+}
+function showView(key){
+  document.querySelectorAll('.tab').forEach((b,i)=>{
+    b.classList.toggle('active',(key==='dash'&&i===0)||(key==='tela'+i));
+  });
+  $('#view-dash').classList.toggle('hidden', key!=='dash');
+  document.querySelectorAll('.screen-view').forEach(v=>{
+    v.classList.toggle('hidden', v.dataset.key!==key);
+  });
+  if(key==='dash') renderDash();
+}
+
+let DADOS = {};
+
+function buildScreens(){
+  const host=$('#screens'); host.innerHTML='';
+  TELAS.forEach(t=>{
+    const v=document.createElement('div');
+    v.className='view screen-view hidden'; v.dataset.key='tela'+t.id;
+    v.innerHTML=`
+      <div class="panel">
+        <div class="audit-meta">
+          <div class="field">
+            <label>Data da auditoria</label>
+            <input type="date" id="data-${t.id}" value="${hoje()}">
+          </div>
+          <div class="next-date" id="next-${t.id}"></div>
+          <div class="spacer"></div>
+          <button class="btn-sm" id="save-${t.id}">Salvar tela</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>${t.nome} — Produtos</h2></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="min-width:140px">Produto</th>
+              <th style="min-width:160px">Descrição do Produto</th>
+              <th style="width:100px">Sistema Novo</th>
+              <th style="width:90px">Físico</th>
+              <th style="width:90px">Divergência</th>
+              <th style="min-width:130px">Responsável</th>
+              <th style="width:110px">Encontrado?</th>
+              <th style="min-width:160px">Motivo</th>
+              <th style="width:140px">Data verificação</th>
+              <th style="width:44px"></th>
+            </tr></thead>
+            <tbody id="tbody-${t.id}"></tbody>
+          </table>
+        </div>
+        <button class="btn-sm ghost add-row" id="add-${t.id}">+ Adicionar produto</button>
+      </div>`;
+    host.appendChild(v);
+
+    $('#data-'+t.id).addEventListener('change',()=>updateNext(t.id));
+    $('#add-'+t.id).onclick=()=>{ addItemRow(t.id); };
+    $('#save-'+t.id).onclick=()=>saveTela(t.id);
+  });
+}
+
+function updateNext(id){
+  const d=$('#data-'+id).value;
+  $('#next-'+id).innerHTML = d
+    ? `Próxima auditoria: <b>${fmt(addDays(d,PRAZO_DIAS))}</b> (em ${PRAZO_DIAS} dias)` : '';
+}
+
+function calcDiv(tr){
+  const sn=tr.querySelector('.f-sisnovo').value;
+  const fi=tr.querySelector('.f-fisico').value;
+  const out=tr.querySelector('.f-diverg');
+  if(sn===''&&fi===''){ out.value=''; out.className='f-diverg'; return; }
+  const d=(Number(sn)||0)-(Number(fi)||0);
+  out.value=d;
+  out.className='f-diverg '+(d===0?'div-zero':(d>0?'div-pos':'div-neg'));
+}
+
+function addItemRow(telaId, item){
+  const tb=$('#tbody-'+telaId);
+  const it=item||{produto:'',descricao:'',sistema_novo:'',fisico:'',responsavel:'',encontrado:true,motivo:'',data_verificacao:hoje()};
+  const tr=document.createElement('tr');
+  tr.className = it.encontrado?'':'row-missing';
+  tr.innerHTML=`
+    <td><input class="f-prod" value="${esc(it.produto)}" placeholder="Produto"></td>
+    <td><input class="f-desc" value="${esc(it.descricao)}" placeholder="Descrição"></td>
+    <td><input class="f-sisnovo" type="number" min="0" value="${it.sistema_novo??''}"></td>
+    <td><input class="f-fisico" type="number" min="0" value="${it.fisico??''}"></td>
+    <td><input class="f-diverg" readonly tabindex="-1"></td>
+    <td><input class="f-resp" value="${esc(it.responsavel)}" placeholder="Responsável"></td>
+    <td>
+      <select class="f-found">
+        <option value="1" ${it.encontrado?'selected':''}>Sim</option>
+        <option value="0" ${!it.encontrado?'selected':''}>Não</option>
+      </select>
+    </td>
+    <td><textarea class="f-motivo" placeholder="Motivo se não encontrado" ${it.encontrado?'disabled':''}>${esc(it.motivo)}</textarea></td>
+    <td><input class="f-dataverif" type="date" value="${it.data_verificacao||''}"></td>
+    <td><button class="icon-btn" title="Remover">✕</button></td>`;
+  const sn=tr.querySelector('.f-sisnovo'), fi=tr.querySelector('.f-fisico');
+  sn.oninput=()=>calcDiv(tr); fi.oninput=()=>calcDiv(tr);
+  const sel=tr.querySelector('.f-found'); const mot=tr.querySelector('.f-motivo');
+  sel.onchange=()=>{
+    const found=sel.value==='1';
+    mot.disabled=found; if(found) mot.value='';
+    tr.className=found?'':'row-missing';
+  };
+  tr.querySelector('.icon-btn').onclick=()=>tr.remove();
+  tb.appendChild(tr);
+  calcDiv(tr);
+}
+
+function readTela(telaId){
+  const data=$('#data-'+telaId).value;
+  const itens=[...$('#tbody-'+telaId).querySelectorAll('tr')].map(tr=>{
+    const sn=tr.querySelector('.f-sisnovo').value;
+    const fi=tr.querySelector('.f-fisico').value;
+    return {
+      produto:tr.querySelector('.f-prod').value.trim(),
+      descricao:tr.querySelector('.f-desc').value.trim(),
+      sistema_novo:sn===''?null:Number(sn),
+      fisico:fi===''?null:Number(fi),
+      divergencia:(sn===''&&fi==='')?null:(Number(sn)||0)-(Number(fi)||0),
+      responsavel:tr.querySelector('.f-resp').value.trim(),
+      encontrado:tr.querySelector('.f-found').value==='1',
+      motivo:tr.querySelector('.f-motivo').value.trim(),
+      data_verificacao:tr.querySelector('.f-dataverif').value||null,
+    };
+  }).filter(i=>i.produto!=='');
+  return {data, itens};
+}
+
+async function saveTela(telaId){
+  const {data, itens}=readTela(telaId);
+  if(!data){ toast('Informe a data da auditoria.',true); return; }
+  const del=await sb.from('produtos_auditoria').delete().eq('tela_id',telaId);
+  if(del.error){ toast('Erro ao salvar: '+del.error.message,true); return; }
+  if(itens.length){
+    const rows=itens.map(i=>({
+      tela_id:telaId, data_auditoria:data,
+      proxima_auditoria:addDays(data,PRAZO_DIAS),
+      produto:i.produto, descricao:i.descricao,
+      sistema_novo:i.sistema_novo, fisico:i.fisico, divergencia:i.divergencia,
+      responsavel:i.responsavel, encontrado:i.encontrado,
+      motivo:i.encontrado?null:i.motivo, data_verificacao:i.data_verificacao,
+    }));
+    const ins=await sb.from('produtos_auditoria').insert(rows);
+    if(ins.error){ toast('Erro ao salvar: '+ins.error.message,true); return; }
+  }
+  toast(`${TELAS.find(t=>t.id===telaId).nome} salva (${itens.length} itens).`);
+  await loadAll();
+}
+
+async function loadAll(){
+  const {data,error}=await sb.from('produtos_auditoria').select('*').order('id',{ascending:true});
+  if(error){ toast('Erro ao carregar: '+error.message,true); return; }
+  DADOS={};
+  TELAS.forEach(t=>DADOS[t.id]={data_auditoria:hoje(),itens:[]});
+  (data||[]).forEach(r=>{
+    if(!DADOS[r.tela_id]) DADOS[r.tela_id]={data_auditoria:r.data_auditoria,itens:[]};
+    DADOS[r.tela_id].data_auditoria=r.data_auditoria;
+    DADOS[r.tela_id].itens.push(r);
+  });
+  TELAS.forEach(t=>{
+    const tb=$('#tbody-'+t.id); if(!tb) return;
+    tb.innerHTML='';
+    const d=DADOS[t.id];
+    $('#data-'+t.id).value=d.data_auditoria||hoje();
+    updateNext(t.id);
+    if(d.itens.length){ d.itens.forEach(i=>addItemRow(t.id,i)); }
+    else addItemRow(t.id);
+  });
+  renderDash();
+}
+
+function renderDash(){
+  const pendentes=[];
+  let totalItens=0, totalNaoEnc=0, urgentes=0, totalDiverg=0;
+  TELAS.forEach(t=>{
+    (DADOS[t.id]?.itens||[]).forEach(i=>{
+      totalItens++;
+      if(i.divergencia && i.divergencia!==0) totalDiverg++;
+      if(!i.encontrado){
+        totalNaoEnc++;
+        const prazo=i.proxima_auditoria||addDays(i.data_auditoria,PRAZO_DIAS);
+        const dr=diasRestantes(prazo);
+        if(dr!==null && dr<=7) urgentes++;
+        pendentes.push({...i, telaNome:t.nome, prazo, dr});
+      }
+    });
+  });
+  pendentes.sort((a,b)=>(a.dr??999)-(b.dr??999));
+
+  $('#kpi-row').innerHTML=`
+    <div class="kpi"><div class="label">Itens auditados</div><div class="value">${totalItens}</div></div>
+    <div class="kpi danger"><div class="label">Não encontrados</div><div class="value">${totalNaoEnc}</div></div>
+    <div class="kpi warn"><div class="label">Com divergência</div><div class="value">${totalDiverg}</div></div>
+    <div class="kpi warn"><div class="label">Prazo ≤ 7 dias</div><div class="value">${urgentes}</div></div>
+    <div class="kpi ok"><div class="label">Encontrados</div><div class="value">${totalItens-totalNaoEnc}</div></div>`;
+
+  const tb=$('#dash-tbody'); tb.innerHTML='';
+  $('#dash-empty').style.display = pendentes.length?'none':'block';
+  pendentes.forEach(p=>{
+    let cls='calm', txt;
+    if(p.dr===null) txt='—';
+    else if(p.dr<0){ cls='urgent'; txt=`Vencido há ${Math.abs(p.dr)}d`; }
+    else if(p.dr<=7){ cls='urgent'; txt=`${p.dr} dias`; }
+    else if(p.dr<=15){ cls='soon'; txt=`${p.dr} dias`; }
+    else txt=`${p.dr} dias`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><b>${esc(p.produto)}</b></td>
+      <td>${p.telaNome}</td>
+      <td>${esc(p.responsavel)||'—'}</td>
+      <td>${esc(p.motivo)||'—'}</td>
+      <td>${fmt(p.data_auditoria)}</td>
+      <td>${fmt(p.prazo)}</td>
+      <td><span class="days-left ${cls}">${txt}</span></td>`;
+    tb.appendChild(tr);
+  });
+}
+$('#refresh-btn').onclick=loadAll;
+
+checkSession();
+</script>
+</body>
+</html>
