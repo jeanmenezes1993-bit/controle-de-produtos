@@ -92,6 +92,8 @@
   .btn-sm:hover{background:var(--brand2)}
   .btn-sm.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
   .btn-sm.ghost:hover{background:var(--panel2)}
+  .btn-sm.danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}
+  .btn-sm.danger:hover{background:var(--danger);color:#fff}
 
   .empty{color:var(--mut);text-align:center;padding:30px;font-size:13px}
   .days-left{font-weight:700}
@@ -260,6 +262,7 @@ function buildScreens(){
           </div>
           <div class="next-date" id="next-${t.id}"></div>
           <div class="spacer"></div>
+          <button class="btn-sm danger" id="del-${t.id}">Excluir tela</button>
           <button class="btn-sm" id="save-${t.id}">Salvar tela</button>
         </div>
       </div>
@@ -289,6 +292,7 @@ function buildScreens(){
     $('#data-'+t.id).addEventListener('change',()=>updateNext(t.id));
     $('#add-'+t.id).onclick=()=>{ addItemRow(t.id); };
     $('#save-'+t.id).onclick=()=>saveTela(t.id);
+    $('#del-'+t.id).onclick=()=>deleteTela(t.id);
   });
 }
 
@@ -380,6 +384,17 @@ async function saveTela(telaId){
     if(ins.error){ toast('Erro ao salvar: '+ins.error.message,true); return; }
   }
   toast(`${TELAS.find(t=>t.id===telaId).nome} salva (${itens.length} itens).`);
+  await loadAll();
+}
+
+async function deleteTela(telaId){
+  const nome=TELAS.find(t=>t.id===telaId).nome;
+  const qtd=(DADOS[telaId]?.itens||[]).length;
+  if(qtd===0){ toast(`${nome} já está vazia.`); return; }
+  if(!confirm(`Excluir todos os ${qtd} produtos salvos da ${nome}?\n\nEsta ação não pode ser desfeita.`)) return;
+  const del=await sb.from('produtos_auditoria').delete().eq('tela_id',telaId);
+  if(del.error){ toast('Erro ao excluir: '+del.error.message,true); return; }
+  toast(`${nome} excluída.`);
   await loadAll();
 }
 
