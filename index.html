@@ -422,6 +422,12 @@ function addItemRow(telaId, item){
     mot.disabled=found; if(found) mot.value='';
     tr.className=found?'':'row-missing';
   };
+  // ao mudar a data de verificacao desta linha, todas as outras acompanham
+  const dv=tr.querySelector('.f-dataverif');
+  dv.onchange=()=>{
+    const nova=dv.value;
+    tb.querySelectorAll('.f-dataverif').forEach(inp=>{ inp.value=nova; });
+  };
   tr.querySelector('.icon-btn').onclick=()=>tr.remove();
   tb.appendChild(tr);
   calcDiv(tr);
