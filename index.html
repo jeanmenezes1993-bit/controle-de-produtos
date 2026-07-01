@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Produtos — Auditoria</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root{
     --bg:#0f1419; --panel:#161d26; --panel2:#1c2530; --line:#28323f;
@@ -76,11 +78,15 @@
   .next-date{color:var(--mut);font-size:13px}
   .next-date b{color:var(--brand)}
 
-  .save-card{display:inline-flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:10px 16px;margin-bottom:14px}
+  .save-card{display:inline-flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:12px 16px;margin-bottom:14px;min-width:240px}
   .save-card-label{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
   .save-card-month{font-size:17px;font-weight:700;text-transform:capitalize}
   .save-card.unsaved{border-left-color:var(--mut)}
   .save-card.unsaved .save-card-month{color:var(--mut);font-weight:600;font-size:14px}
+  .save-card-resp{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:8px}
+  .save-card-resp label{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .save-card-resp input{padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--ink);font-weight:600}
+  .save-card-pdf{font-size:12px;padding:6px 12px;align-self:flex-start}
 
   .tbl-wrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -274,10 +280,11 @@ function setLock(telaId, locked){
   const view=document.querySelector('.screen-view[data-key="tela'+telaId+'"]');
   if(!view) return;
   // trava/libera todos os campos editaveis (menos a divergencia, que ja e readonly)
-  view.querySelectorAll('.f-prod,.f-desc,.f-sisnovo,.f-fisico,.f-resp,.f-motivo,.f-dataverif').forEach(el=>{
+  view.querySelectorAll('.f-prod,.f-desc,.f-sisnovo,.f-fisico,.f-motivo,.f-dataverif').forEach(el=>{
     el.readOnly = locked;
     el.style.opacity = locked ? '.7' : '1';
   });
+  const respTela=$('#resptela-'+telaId); if(respTela) respTela.readOnly = locked;
   view.querySelectorAll('.f-found').forEach(el=>{ el.disabled = locked; });
   // botoes de remover linha e adicionar produto
   view.querySelectorAll('.icon-btn').forEach(b=>{ b.style.display = locked?'none':''; });
@@ -298,8 +305,17 @@ function buildScreens(){
     v.className='view screen-view hidden'; v.dataset.key='tela'+t.id;
     v.innerHTML=`
       <div class="save-card" id="savecard-${t.id}">
-        <div class="save-card-label">Salva em</div>
-        <div class="save-card-month" id="savemonth-${t.id}">—</div>
+        <div class="save-card-top">
+          <div>
+            <div class="save-card-label">Salva em</div>
+            <div class="save-card-month" id="savemonth-${t.id}">—</div>
+          </div>
+        </div>
+        <div class="save-card-resp">
+          <label>Responsável da tela</label>
+          <input type="text" id="resptela-${t.id}" placeholder="Nome do responsável">
+        </div>
+        <button class="btn-sm ghost save-card-pdf" id="pdf-${t.id}">📄 Baixar PDF</button>
       </div>
       <div class="panel">
         <div class="audit-meta">
@@ -314,20 +330,22 @@ function buildScreens(){
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h2>${t.nome} — Produtos</h2></div>
+        <div class="panel-head">
+          <h2>${t.nome} — Produtos</h2>
+          <button class="btn-sm ghost" id="pdf2-${t.id}">📄 Baixar tela em PDF</button>
+        </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th style="min-width:140px">Produto</th>
-              <th style="min-width:160px">Descrição do Produto</th>
-              <th style="width:100px">Sistema Novo</th>
-              <th style="width:90px">Físico</th>
+              <th style="width:90px">Produto</th>
+              <th style="min-width:260px">Descrição do Produto</th>
+              <th style="width:90px">Sistema Novo</th>
+              <th style="width:80px">Físico</th>
               <th style="width:90px">Divergência</th>
-              <th style="min-width:130px">Responsável</th>
-              <th style="width:110px">Encontrado?</th>
-              <th style="min-width:160px">Motivo</th>
-              <th style="width:140px">Data verificação</th>
-              <th style="width:44px"></th>
+              <th style="width:100px">Encontrado?</th>
+              <th style="min-width:180px">Motivo</th>
+              <th style="width:130px">Data verificação</th>
+              <th style="width:40px"></th>
             </tr></thead>
             <tbody id="tbody-${t.id}"></tbody>
           </table>
@@ -343,6 +361,8 @@ function buildScreens(){
       else saveTela(t.id);                        // estava editando: salva e trava
     };
     $('#del-'+t.id).onclick=()=>deleteTela(t.id);
+    $('#pdf-'+t.id).onclick=()=>gerarPDF(t.id);
+    $('#pdf2-'+t.id).onclick=()=>gerarPDF(t.id);
   });
 }
 
@@ -373,7 +393,6 @@ function addItemRow(telaId, item){
     <td><input class="f-sisnovo" type="number" min="0" value="${it.sistema_novo??''}"></td>
     <td><input class="f-fisico" type="number" min="0" value="${it.fisico??''}"></td>
     <td><input class="f-diverg" readonly tabindex="-1"></td>
-    <td><input class="f-resp" value="${esc(it.responsavel)}" placeholder="Responsável"></td>
     <td>
       <select class="f-found">
         <option value="1" ${it.encontrado?'selected':''}>Sim</option>
@@ -398,6 +417,7 @@ function addItemRow(telaId, item){
 
 function readTela(telaId){
   const data=$('#data-'+telaId).value;
+  const responsavelTela=$('#resptela-'+telaId).value.trim();
   const itens=[...$('#tbody-'+telaId).querySelectorAll('tr')].map(tr=>{
     const sn=tr.querySelector('.f-sisnovo').value;
     const fi=tr.querySelector('.f-fisico').value;
@@ -407,13 +427,13 @@ function readTela(telaId){
       sistema_novo:sn===''?null:Number(sn),
       fisico:fi===''?null:Number(fi),
       divergencia:(sn===''&&fi==='')?null:(Number(sn)||0)-(Number(fi)||0),
-      responsavel:tr.querySelector('.f-resp').value.trim(),
+      responsavel:responsavelTela,
       encontrado:tr.querySelector('.f-found').value==='1',
       motivo:tr.querySelector('.f-motivo').value.trim(),
       data_verificacao:tr.querySelector('.f-dataverif').value||null,
     };
   }).filter(i=>i.produto!=='');
-  return {data, itens};
+  return {data, itens, responsavelTela};
 }
 
 async function saveTela(telaId){
@@ -448,6 +468,60 @@ async function deleteTela(telaId){
   await loadAll();
 }
 
+function gerarPDF(telaId){
+  const nome=TELAS.find(t=>t.id===telaId).nome;
+  const d=DADOS[telaId];
+  const itens=d?.itens||[];
+  if(!itens.length){ toast('Nada salvo nesta tela para gerar PDF.',true); return; }
+  if(!window.jspdf){ toast('Biblioteca de PDF não carregou. Verifique a internet.',true); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+
+  // cabeçalho
+  const respTela=(itens.find(i=>i.responsavel)||{}).responsavel||'—';
+  doc.setFontSize(16); doc.setFont(undefined,'bold');
+  doc.text(`Controle de Produtos — ${nome}`, 40, 40);
+  doc.setFontSize(10); doc.setFont(undefined,'normal');
+  doc.text(`Responsável: ${respTela}`, 40, 58);
+  doc.text(`Data da auditoria: ${fmt(d.data_auditoria)}`, 40, 72);
+  doc.text(`Próxima auditoria: ${fmt(addDays(d.data_auditoria,PRAZO_DIAS))}`, 40, 86);
+  doc.text(`Gerado em: ${fmt(hoje())}`, 40, 100);
+
+  // tabela
+  const head=[['Produto','Descrição','Sist. Novo','Físico','Diverg.','Encontrado','Motivo','Data verif.']];
+  const body=itens.map(i=>[
+    i.produto||'', i.descricao||'',
+    i.sistema_novo??'', i.fisico??'',
+    (i.divergencia??'')===''?'':String(i.divergencia),
+    i.encontrado?'Sim':'Não',
+    i.encontrado?'':(i.motivo||''),
+    i.data_verificacao?fmt(i.data_verificacao):'',
+  ]);
+
+  doc.autoTable({
+    head, body, startY:114,
+    styles:{fontSize:8, cellPadding:4},
+    headStyles:{fillColor:[59,167,118], textColor:255},
+    alternateRowStyles:{fillColor:[245,247,249]},
+    columnStyles:{1:{cellWidth:200}},
+    didParseCell:function(data){
+      // colore a coluna divergencia (indice 4) no corpo
+      if(data.section==='body' && data.column.index===4 && data.cell.raw!==''){
+        const v=Number(data.cell.raw);
+        if(v>0) data.cell.styles.textColor=[224,161,58];
+        else if(v<0) data.cell.styles.textColor=[224,90,79];
+        else data.cell.styles.textColor=[59,167,118];
+        data.cell.styles.fontStyle='bold';
+      }
+    }
+  });
+
+  const mes=(d.data_auditoria||hoje()).slice(0,7); // AAAA-MM
+  doc.save(`${nome.replace(/\s+/g,'_')}_${mes}.pdf`);
+  toast(`PDF de ${nome} gerado.`);
+}
+
 async function loadAll(){
   const {data,error}=await sb.from('produtos_auditoria').select('*').order('id',{ascending:true});
   if(error){ toast('Erro ao carregar: '+error.message,true); return; }
@@ -466,6 +540,9 @@ async function loadAll(){
     $('#data-'+t.id).value=d.data_auditoria||hoje();
     updateNext(t.id);
     setSaveCard(t.id, d.salva ? d.data_auditoria : null);
+    // responsavel da tela: pega do primeiro item que tiver
+    const resp=(d.itens.find(i=>i.responsavel)||{}).responsavel||'';
+    const respInp=$('#resptela-'+t.id); if(respInp) respInp.value=resp;
     if(d.itens.length){ d.itens.forEach(i=>addItemRow(t.id,i)); }
     else addItemRow(t.id);
     setLock(t.id, d.salva); // se ja tem dados salvos, trava; senao, deixa editavel
