@@ -41,13 +41,23 @@
   .top-btn:hover{background:var(--panel2)}
   .user-mail{color:var(--mut);font-size:12px}
 
-  .tabs{display:flex;gap:4px;padding:10px 20px 0;background:var(--panel);overflow-x:auto;border-bottom:1px solid var(--line)}
-  .tab{padding:9px 16px;border:none;background:transparent;color:var(--mut);font-size:13px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
-  .tab.active{color:var(--ink);border-bottom-color:var(--brand)}
-  .tab:hover{color:var(--ink)}
+  /* layout com sidebar */
+  .layout{display:flex;align-items:flex-start;min-height:calc(100vh - 53px)}
+  .sidebar{width:190px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:4px;position:sticky;top:53px;align-self:stretch}
+  .tab{padding:11px 14px;border:none;background:transparent;color:var(--mut);font-size:13px;font-weight:600;border-radius:8px;text-align:left;border-left:3px solid transparent}
+  .tab.active{color:var(--ink);background:var(--panel2);border-left-color:var(--brand)}
+  .tab:hover{color:var(--ink);background:var(--panel2)}
+  .content{flex:1;min-width:0}
 
   .view{padding:22px 20px;max-width:1320px;margin:0 auto}
   .view.hidden{display:none}
+
+  @media(max-width:720px){
+    .layout{flex-direction:column}
+    .sidebar{width:100%;flex-direction:row;overflow-x:auto;position:static;border-right:none;border-bottom:1px solid var(--line)}
+    .tab{border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
+    .tab.active{border-left:none;border-bottom-color:var(--brand)}
+  }
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
@@ -91,7 +101,7 @@
   .toast.show{opacity:1}
   .toast.err{border-left-color:var(--danger)}
 
-  @media(max-width:640px){ .view{padding:16px 12px} .kpi .value{font-size:22px} }
+  @media(max-width:640px){ .view{padding:16px 12px} .kpi .value{font-size:22px} .sidebar{padding:8px} }
 </style>
 </head>
 <body>
@@ -116,29 +126,32 @@
     <button class="top-btn" id="logout-btn">Sair</button>
   </div>
 
-  <div class="tabs" id="tabs"></div>
+  <div class="layout">
+    <div class="sidebar" id="tabs"></div>
+    <div class="content">
+      <div class="view" id="view-dash">
+        <div class="kpis" id="kpi-row"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Produtos não encontrados — prazo de 30 dias</h2>
+            <button class="btn-sm ghost" id="refresh-btn">Atualizar</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Produto</th><th>Tela</th><th>Responsável</th>
+                <th>Motivo</th><th>Data auditoria</th><th>Prazo final</th><th>Dias restantes</th>
+              </tr></thead>
+              <tbody id="dash-tbody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="dash-empty" style="display:none">Nenhum produto pendente. Tudo encontrado. ✅</div>
+        </div>
+      </div>
 
-  <div class="view" id="view-dash">
-    <div class="kpis" id="kpi-row"></div>
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Produtos não encontrados — prazo de 30 dias</h2>
-        <button class="btn-sm ghost" id="refresh-btn">Atualizar</button>
-      </div>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr>
-            <th>Produto</th><th>Tela</th><th>Responsável</th>
-            <th>Motivo</th><th>Data auditoria</th><th>Prazo final</th><th>Dias restantes</th>
-          </tr></thead>
-          <tbody id="dash-tbody"></tbody>
-        </table>
-      </div>
-      <div class="empty" id="dash-empty" style="display:none">Nenhum produto pendente. Tudo encontrado. ✅</div>
+      <div id="screens"></div>
     </div>
   </div>
-
-  <div id="screens"></div>
 </div>
 
 <div class="toast" id="toast"></div>
