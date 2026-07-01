@@ -76,6 +76,12 @@
   .next-date{color:var(--mut);font-size:13px}
   .next-date b{color:var(--brand)}
 
+  .save-card{display:inline-flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:10px 16px;margin-bottom:14px}
+  .save-card-label{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .save-card-month{font-size:17px;font-weight:700;text-transform:capitalize}
+  .save-card.unsaved{border-left-color:var(--mut)}
+  .save-card.unsaved .save-card-month{color:var(--mut);font-weight:600;font-size:14px}
+
   .tbl-wrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -190,6 +196,19 @@ function diasRestantes(prazoStr){
   return Math.round((prazo-now)/86400000);
 }
 function esc(s){ return (s??'').toString().replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function mesAno(dateStr){
+  if(!dateStr) return null;
+  const [y,m]=dateStr.split('-');
+  return `${MESES[Number(m)-1]}/${y}`;
+}
+function setSaveCard(telaId, dateStr){
+  const card=$('#savecard-'+telaId), month=$('#savemonth-'+telaId);
+  if(!card) return;
+  const ma=mesAno(dateStr);
+  if(ma){ card.className='save-card'; month.textContent=ma; }
+  else { card.className='save-card unsaved'; month.textContent='Não salva'; }
+}
 
 $('#li-btn').onclick = login;
 $('#li-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
@@ -247,6 +266,30 @@ function showView(key){
 }
 
 let DADOS = {};
+let TELA_LOCKED = {};
+
+// trava (readonly) ou libera os campos de uma tela
+function setLock(telaId, locked){
+  TELA_LOCKED[telaId]=locked;
+  const view=document.querySelector('.screen-view[data-key="tela'+telaId+'"]');
+  if(!view) return;
+  // trava/libera todos os campos editaveis (menos a divergencia, que ja e readonly)
+  view.querySelectorAll('.f-prod,.f-desc,.f-sisnovo,.f-fisico,.f-resp,.f-motivo,.f-dataverif').forEach(el=>{
+    el.readOnly = locked;
+    el.style.opacity = locked ? '.7' : '1';
+  });
+  view.querySelectorAll('.f-found').forEach(el=>{ el.disabled = locked; });
+  // botoes de remover linha e adicionar produto
+  view.querySelectorAll('.icon-btn').forEach(b=>{ b.style.display = locked?'none':''; });
+  const addBtn=$('#add-'+telaId); if(addBtn) addBtn.style.display = locked?'none':'';
+  const dataInp=$('#data-'+telaId); if(dataInp) dataInp.disabled = locked;
+  // botao muda de rotulo
+  const saveBtn=$('#save-'+telaId);
+  if(saveBtn){
+    saveBtn.textContent = locked ? 'Editar' : 'Salvar tela';
+    saveBtn.classList.toggle('ghost', locked);
+  }
+}
 
 function buildScreens(){
   const host=$('#screens'); host.innerHTML='';
@@ -254,6 +297,10 @@ function buildScreens(){
     const v=document.createElement('div');
     v.className='view screen-view hidden'; v.dataset.key='tela'+t.id;
     v.innerHTML=`
+      <div class="save-card" id="savecard-${t.id}">
+        <div class="save-card-label">Salva em</div>
+        <div class="save-card-month" id="savemonth-${t.id}">—</div>
+      </div>
       <div class="panel">
         <div class="audit-meta">
           <div class="field">
@@ -291,7 +338,10 @@ function buildScreens(){
 
     $('#data-'+t.id).addEventListener('change',()=>updateNext(t.id));
     $('#add-'+t.id).onclick=()=>{ addItemRow(t.id); };
-    $('#save-'+t.id).onclick=()=>saveTela(t.id);
+    $('#save-'+t.id).onclick=()=>{
+      if(TELA_LOCKED[t.id]) setLock(t.id,false); // estava travada: botao era "Editar"
+      else saveTela(t.id);                        // estava editando: salva e trava
+    };
     $('#del-'+t.id).onclick=()=>deleteTela(t.id);
   });
 }
@@ -402,10 +452,11 @@ async function loadAll(){
   const {data,error}=await sb.from('produtos_auditoria').select('*').order('id',{ascending:true});
   if(error){ toast('Erro ao carregar: '+error.message,true); return; }
   DADOS={};
-  TELAS.forEach(t=>DADOS[t.id]={data_auditoria:hoje(),itens:[]});
+  TELAS.forEach(t=>DADOS[t.id]={data_auditoria:hoje(),itens:[],salva:false});
   (data||[]).forEach(r=>{
-    if(!DADOS[r.tela_id]) DADOS[r.tela_id]={data_auditoria:r.data_auditoria,itens:[]};
+    if(!DADOS[r.tela_id]) DADOS[r.tela_id]={data_auditoria:r.data_auditoria,itens:[],salva:true};
     DADOS[r.tela_id].data_auditoria=r.data_auditoria;
+    DADOS[r.tela_id].salva=true;
     DADOS[r.tela_id].itens.push(r);
   });
   TELAS.forEach(t=>{
@@ -414,8 +465,10 @@ async function loadAll(){
     const d=DADOS[t.id];
     $('#data-'+t.id).value=d.data_auditoria||hoje();
     updateNext(t.id);
+    setSaveCard(t.id, d.salva ? d.data_auditoria : null);
     if(d.itens.length){ d.itens.forEach(i=>addItemRow(t.id,i)); }
     else addItemRow(t.id);
+    setLock(t.id, d.salva); // se ja tem dados salvos, trava; senao, deixa editavel
   });
   renderDash();
 }
