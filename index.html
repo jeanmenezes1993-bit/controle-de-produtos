@@ -51,7 +51,7 @@
   .tab:hover{color:var(--ink);background:var(--panel2)}
   .content{flex:1;min-width:0}
 
-  .view{padding:22px 20px;max-width:1320px;margin:0 auto}
+  .view{padding:22px 28px;max-width:1600px;margin:0 auto}
   .view.hidden{display:none}
 
   @media(max-width:720px){
@@ -94,7 +94,8 @@
   th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
   td input,td select,td textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--ink)}
   td textarea{resize:vertical;min-height:34px}
-  td input[readonly]{background:transparent;border-color:transparent;font-weight:700;text-align:center}
+  td input[readonly]{background:transparent;border-color:transparent;font-weight:700;text-align:left}
+  td input.f-diverg[readonly]{text-align:center}
   .row-missing{background:rgba(224,90,79,.07)}
   .div-pos{color:var(--warn)!important} .div-neg{color:var(--danger)!important} .div-zero{color:var(--ok)!important}
   .icon-btn{background:transparent;border:none;color:var(--mut);font-size:16px;padding:4px 8px;border-radius:6px}
@@ -337,8 +338,8 @@ function buildScreens(){
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th style="width:90px">Produto</th>
-              <th style="min-width:260px">Descrição do Produto</th>
+              <th style="width:80px">Produto</th>
+              <th style="min-width:340px">Descrição do Produto</th>
               <th style="width:90px">Sistema Novo</th>
               <th style="width:80px">Físico</th>
               <th style="width:90px">Divergência</th>
