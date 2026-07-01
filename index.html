@@ -281,8 +281,13 @@ function setLock(telaId, locked){
   const view=document.querySelector('.screen-view[data-key="tela'+telaId+'"]');
   if(!view) return;
   // trava/libera todos os campos editaveis (menos a divergencia, que ja e readonly)
-  view.querySelectorAll('.f-prod,.f-desc,.f-sisnovo,.f-fisico,.f-motivo,.f-dataverif').forEach(el=>{
+  view.querySelectorAll('.f-prod,.f-desc,.f-sisnovo,.f-fisico,.f-motivo').forEach(el=>{
     el.readOnly = locked;
+    el.style.opacity = locked ? '.7' : '1';
+  });
+  // campos de data: readOnly nao bloqueia o calendario, entao usamos disabled
+  view.querySelectorAll('.f-dataverif').forEach(el=>{
+    el.disabled = locked;
     el.style.opacity = locked ? '.7' : '1';
   });
   const respTela=$('#resptela-'+telaId); if(respTela) respTela.readOnly = locked;
@@ -424,10 +429,13 @@ function addItemRow(telaId, item){
   };
   // ao mudar a data de verificacao desta linha, todas as outras acompanham
   const dv=tr.querySelector('.f-dataverif');
-  dv.onchange=()=>{
+  const propagaData=()=>{
+    if(dv.disabled) return;           // tela travada: nao propaga
     const nova=dv.value;
-    tb.querySelectorAll('.f-dataverif').forEach(inp=>{ inp.value=nova; });
+    tb.querySelectorAll('.f-dataverif').forEach(inp=>{ if(inp!==dv) inp.value=nova; });
   };
+  dv.onchange=propagaData;
+  dv.oninput=propagaData;
   tr.querySelector('.icon-btn').onclick=()=>tr.remove();
   tb.appendChild(tr);
   calcDiv(tr);
