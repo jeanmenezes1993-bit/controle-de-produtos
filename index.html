@@ -355,7 +355,10 @@ function buildScreens(){
       </div>`;
     host.appendChild(v);
 
-    $('#data-'+t.id).addEventListener('change',()=>updateNext(t.id));
+    $('#data-'+t.id).addEventListener('change',()=>{
+      updateNext(t.id);
+      syncDatasVerif(t.id);
+    });
     $('#add-'+t.id).onclick=()=>{ addItemRow(t.id); };
     $('#save-'+t.id).onclick=()=>{
       if(TELA_LOCKED[t.id]) setLock(t.id,false); // estava travada: botao era "Editar"
@@ -373,6 +376,13 @@ function updateNext(id){
     ? `Próxima auditoria: <b>${fmt(addDays(d,PRAZO_DIAS))}</b> (em ${PRAZO_DIAS} dias)` : '';
 }
 
+// copia a data da auditoria para todas as linhas de "Data verificação" da tela
+function syncDatasVerif(telaId){
+  const d=$('#data-'+telaId).value;
+  if(!d) return;
+  $('#tbody-'+telaId).querySelectorAll('.f-dataverif').forEach(inp=>{ inp.value=d; });
+}
+
 function calcDiv(tr){
   const sn=tr.querySelector('.f-sisnovo').value;
   const fi=tr.querySelector('.f-fisico').value;
@@ -385,7 +395,8 @@ function calcDiv(tr){
 
 function addItemRow(telaId, item){
   const tb=$('#tbody-'+telaId);
-  const it=item||{produto:'',descricao:'',sistema_novo:'',fisico:'',responsavel:'',encontrado:true,motivo:'',data_verificacao:hoje()};
+  const dataTela=$('#data-'+telaId)?.value || hoje();
+  const it=item||{produto:'',descricao:'',sistema_novo:'',fisico:'',responsavel:'',encontrado:true,motivo:'',data_verificacao:dataTela};
   const tr=document.createElement('tr');
   tr.className = it.encontrado?'':'row-missing';
   tr.innerHTML=`
