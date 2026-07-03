@@ -140,8 +140,8 @@
   td input:focus,td select:focus,td textarea:focus{outline:none;border-color:var(--brand)}
   td textarea{resize:vertical;min-height:36px}
   td .f-sisnovo,td .f-fisico,td .f-diverg{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:center}
-  td input[readonly]{background:transparent;border-color:transparent;font-weight:700;text-align:left}
-  td input.f-prod[readonly]{font-family:var(--mono)}
+  td input[readonly]{background:transparent;border-color:transparent;font-weight:700;text-align:left;padding-left:2px;padding-right:2px;text-overflow:clip}
+  td input.f-prod[readonly]{font-family:var(--mono);letter-spacing:-.3px}
   td input.f-sisnovo[readonly],td input.f-fisico[readonly],td input.f-diverg[readonly]{text-align:center}
   .row-missing{background:color-mix(in srgb,var(--danger) 7%,transparent)!important}
   .div-pos{color:var(--warn)!important} .div-neg{color:var(--danger)!important} .div-zero{color:var(--ok)!important}
@@ -194,20 +194,6 @@
     <div class="content">
       <div class="view" id="view-dash">
         <div class="kpis" id="kpi-row"></div>
-        <div class="charts-grid">
-          <div class="panel chart-panel">
-            <h2>Divergências por tela</h2>
-            <div class="chart-box"><canvas id="chart-telas"></canvas></div>
-          </div>
-          <div class="panel chart-panel">
-            <h2>Saúde da auditoria</h2>
-            <div class="chart-box"><canvas id="chart-saude"></canvas></div>
-          </div>
-          <div class="panel chart-panel chart-wide">
-            <h2>Evolução de divergências por mês</h2>
-            <div class="chart-box"><canvas id="chart-evolucao"></canvas></div>
-          </div>
-        </div>
         <div class="panel">
           <div class="panel-head">
             <h2>Produtos não encontrados — prazo de 30 dias</h2>
@@ -223,6 +209,20 @@
             </table>
           </div>
           <div class="empty" id="dash-empty" style="display:none">Nenhum produto pendente. Tudo encontrado. ✅</div>
+        </div>
+        <div class="charts-grid">
+          <div class="panel chart-panel">
+            <h2>Divergências por tela</h2>
+            <div class="chart-box"><canvas id="chart-telas"></canvas></div>
+          </div>
+          <div class="panel chart-panel">
+            <h2>Saúde da auditoria</h2>
+            <div class="chart-box"><canvas id="chart-saude"></canvas></div>
+          </div>
+          <div class="panel chart-panel chart-wide">
+            <h2>Evolução de divergências por mês</h2>
+            <div class="chart-box"><canvas id="chart-evolucao"></canvas></div>
+          </div>
         </div>
       </div>
 
@@ -410,7 +410,7 @@ function buildScreens(){
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th style="width:80px">Produto</th>
+              <th style="width:110px">Produto</th>
               <th style="min-width:340px">Descrição do Produto</th>
               <th style="width:90px">Sistema Novo</th>
               <th style="width:80px">Físico</th>
