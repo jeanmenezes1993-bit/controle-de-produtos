@@ -88,6 +88,16 @@
   .save-card-resp input{padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--ink);font-weight:600}
   .save-card-pdf{font-size:12px;padding:6px 12px;align-self:flex-start}
 
+  .cards-row{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
+  .cards-row .save-card{margin-bottom:0}
+  .hist-cards{display:flex;gap:12px;flex-wrap:wrap}
+  .hist-card{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:10px;padding:12px 14px;min-width:170px}
+  .hist-card .hc-label{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+  .hist-card .hc-month{font-size:15px;font-weight:700;text-transform:capitalize}
+  .hist-card .hc-info{color:var(--mut);font-size:11px}
+  .hist-card .hc-btns{display:flex;gap:6px;margin-top:4px}
+  .hist-card .hc-btns button{flex:1;font-size:11px;padding:5px 8px}
+
   .tbl-wrap{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -273,6 +283,7 @@ function showView(key){
 }
 
 let DADOS = {};
+let HIST = {};
 let TELA_LOCKED = {};
 
 // trava (readonly) ou libera os campos de uma tela
@@ -310,18 +321,21 @@ function buildScreens(){
     const v=document.createElement('div');
     v.className='view screen-view hidden'; v.dataset.key='tela'+t.id;
     v.innerHTML=`
-      <div class="save-card" id="savecard-${t.id}">
-        <div class="save-card-top">
-          <div>
-            <div class="save-card-label">Salva em</div>
-            <div class="save-card-month" id="savemonth-${t.id}">—</div>
+      <div class="cards-row">
+        <div class="save-card" id="savecard-${t.id}">
+          <div class="save-card-top">
+            <div>
+              <div class="save-card-label">Salva em</div>
+              <div class="save-card-month" id="savemonth-${t.id}">—</div>
+            </div>
           </div>
+          <div class="save-card-resp">
+            <label>Responsável da tela</label>
+            <input type="text" id="resptela-${t.id}" placeholder="Nome do responsável">
+          </div>
+          <button class="btn-sm ghost save-card-pdf" id="pdf-${t.id}">📄 Baixar PDF</button>
         </div>
-        <div class="save-card-resp">
-          <label>Responsável da tela</label>
-          <input type="text" id="resptela-${t.id}" placeholder="Nome do responsável">
-        </div>
-        <button class="btn-sm ghost save-card-pdf" id="pdf-${t.id}">📄 Baixar PDF</button>
+        <div class="hist-cards" id="histcards-${t.id}"></div>
       </div>
       <div class="panel">
         <div class="audit-meta">
@@ -463,7 +477,7 @@ function readTela(telaId){
 }
 
 async function saveTela(telaId){
-  const {data, itens}=readTela(telaId);
+  const {data, itens, responsavelTela}=readTela(telaId);
   if(!data){ toast('Informe a data da auditoria.',true); return; }
   const del=await sb.from('produtos_auditoria').delete().eq('tela_id',telaId);
   if(del.error){ toast('Erro ao salvar: '+del.error.message,true); return; }
@@ -478,6 +492,17 @@ async function saveTela(telaId){
     }));
     const ins=await sb.from('produtos_auditoria').insert(rows);
     if(ins.error){ toast('Erro ao salvar: '+ins.error.message,true); return; }
+  }
+  // grava/atualiza a fotografia no historico, por competencia (AAAA-MM)
+  if(itens.length){
+    const competencia=(data||hoje()).slice(0,7);
+    const hist={
+      tela_id:telaId, competencia, data_auditoria:data,
+      responsavel:responsavelTela, itens:itens,
+    };
+    const up=await sb.from('auditoria_historico')
+      .upsert(hist, {onConflict:'tela_id,competencia'});
+    if(up.error){ toast('Salvo, mas houve erro no histórico: '+up.error.message,true); }
   }
   toast(`${TELAS.find(t=>t.id===telaId).nome} salva (${itens.length} itens).`);
   await loadAll();
@@ -548,6 +573,100 @@ function gerarPDF(telaId){
   toast(`PDF de ${nome} gerado.`);
 }
 
+// ---- Histórico por mês ----
+function competenciaLabel(comp){
+  // comp = 'AAAA-MM'
+  const [y,m]=comp.split('-');
+  return `${MESES[Number(m)-1]}/${y}`;
+}
+
+function renderHistCards(telaId){
+  const host=$('#histcards-'+telaId); if(!host) return;
+  const lista=HIST[telaId]||[];
+  // esconde a competencia que é a mesma da tela atual (evita duplicar o cartão principal)
+  const compAtual=(DADOS[telaId]?.data_auditoria||'').slice(0,7);
+  const outras=lista.filter(r=>r.competencia!==compAtual);
+  host.innerHTML='';
+  outras.forEach(r=>{
+    const qtd=Array.isArray(r.itens)?r.itens.length:0;
+    const card=document.createElement('div');
+    card.className='hist-card';
+    card.innerHTML=`
+      <div class="hc-label">Salva em</div>
+      <div class="hc-month">${competenciaLabel(r.competencia)}</div>
+      <div class="hc-info">${qtd} produtos · ${r.responsavel||'sem responsável'}</div>
+      <div class="hc-btns">
+        <button class="btn-sm ghost">👁 Ver</button>
+        <button class="btn-sm ghost">📄 PDF</button>
+      </div>`;
+    const btns=card.querySelectorAll('button');
+    btns[0].onclick=()=>verHist(telaId, r.competencia);
+    btns[1].onclick=()=>pdfHist(telaId, r.competencia);
+    host.appendChild(card);
+  });
+}
+
+function getHist(telaId, competencia){
+  return (HIST[telaId]||[]).find(r=>r.competencia===competencia);
+}
+
+function verHist(telaId, competencia){
+  const r=getHist(telaId, competencia);
+  if(!r){ toast('Registro não encontrado.',true); return; }
+  const itens=Array.isArray(r.itens)?r.itens:[];
+  const nome=TELAS.find(t=>t.id===telaId).nome;
+  let linhas=itens.map(i=>{
+    const div=(i.divergencia??'')===''?'':i.divergencia;
+    return `• ${i.produto} — ${i.descricao||''} | Sist:${i.sistema_novo??''} Fís:${i.fisico??''} Div:${div} | ${i.encontrado?'Encontrado':'NÃO: '+(i.motivo||'')}`;
+  }).join('\n');
+  alert(`${nome} — ${competenciaLabel(competencia)}\nResponsável: ${r.responsavel||'—'}\nData: ${fmt(r.data_auditoria)}\n\n${linhas||'(sem itens)'}`);
+}
+
+function pdfHist(telaId, competencia){
+  const r=getHist(telaId, competencia);
+  if(!r){ toast('Registro não encontrado.',true); return; }
+  if(!window.jspdf){ toast('Biblioteca de PDF não carregou.',true); return; }
+  const itens=Array.isArray(r.itens)?r.itens:[];
+  const nome=TELAS.find(t=>t.id===telaId).nome;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
+
+  doc.setFontSize(16); doc.setFont(undefined,'bold');
+  doc.text(`Controle de Produtos — ${nome} (${competenciaLabel(competencia)})`, 40, 40);
+  doc.setFontSize(10); doc.setFont(undefined,'normal');
+  doc.text(`Responsável: ${r.responsavel||'—'}`, 40, 58);
+  doc.text(`Data da auditoria: ${fmt(r.data_auditoria)}`, 40, 72);
+  doc.text(`Gerado em: ${fmt(hoje())}`, 40, 86);
+
+  const head=[['Produto','Descrição','Sist. Novo','Físico','Diverg.','Encontrado','Motivo','Data verif.']];
+  const body=itens.map(i=>[
+    i.produto||'', i.descricao||'',
+    i.sistema_novo??'', i.fisico??'',
+    (i.divergencia??'')===''?'':String(i.divergencia),
+    i.encontrado?'Sim':'Não',
+    i.encontrado?'':(i.motivo||''),
+    i.data_verificacao?fmt(i.data_verificacao):'',
+  ]);
+  doc.autoTable({
+    head, body, startY:100,
+    styles:{fontSize:8, cellPadding:4},
+    headStyles:{fillColor:[59,167,118], textColor:255},
+    alternateRowStyles:{fillColor:[245,247,249]},
+    columnStyles:{1:{cellWidth:200}},
+    didParseCell:function(data){
+      if(data.section==='body' && data.column.index===4 && data.cell.raw!==''){
+        const v=Number(data.cell.raw);
+        if(v>0) data.cell.styles.textColor=[224,161,58];
+        else if(v<0) data.cell.styles.textColor=[224,90,79];
+        else data.cell.styles.textColor=[59,167,118];
+        data.cell.styles.fontStyle='bold';
+      }
+    }
+  });
+  doc.save(`${nome.replace(/\s+/g,'_')}_${competencia}.pdf`);
+  toast(`PDF de ${competenciaLabel(competencia)} gerado.`);
+}
+
 async function loadAll(){
   const {data,error}=await sb.from('produtos_auditoria').select('*').order('id',{ascending:true});
   if(error){ toast('Erro ao carregar: '+error.message,true); return; }
@@ -559,6 +678,15 @@ async function loadAll(){
     DADOS[r.tela_id].salva=true;
     DADOS[r.tela_id].itens.push(r);
   });
+  // carrega o historico por mes
+  HIST={};
+  const h=await sb.from('auditoria_historico').select('*').order('competencia',{ascending:false});
+  if(!h.error && h.data){
+    h.data.forEach(r=>{
+      if(!HIST[r.tela_id]) HIST[r.tela_id]=[];
+      HIST[r.tela_id].push(r);
+    });
+  }
   TELAS.forEach(t=>{
     const tb=$('#tbody-'+t.id); if(!tb) return;
     tb.innerHTML='';
@@ -572,6 +700,7 @@ async function loadAll(){
     if(d.itens.length){ d.itens.forEach(i=>addItemRow(t.id,i)); }
     else addItemRow(t.id);
     setLock(t.id, d.salva); // se ja tem dados salvos, trava; senao, deixa editavel
+    renderHistCards(t.id);
   });
   renderDash();
 }
