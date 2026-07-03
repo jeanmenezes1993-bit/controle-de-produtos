@@ -91,9 +91,9 @@
   .cards-row{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
   .cards-row .save-card{margin-bottom:0}
   .hist-cards{display:flex;gap:12px;flex-wrap:wrap}
-  .hist-card{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:10px;padding:12px 14px;min-width:170px}
-  .hc-trash{position:absolute;top:8px;right:8px;background:transparent;border:none;font-size:14px;cursor:pointer;opacity:.5;padding:2px 4px;border-radius:6px;line-height:1}
-  .hc-trash:hover{opacity:1;background:rgba(224,90,79,.15)}
+  .hist-card{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:10px;padding:12px 14px;padding-right:38px;min-width:170px}
+  .hc-trash{position:absolute;top:6px;right:6px;background:var(--panel2);border:1px solid var(--line);color:var(--danger);font-size:12px;cursor:pointer;opacity:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;line-height:1;padding:0}
+  .hc-trash:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
   .hist-card .hc-label{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
   .hist-card .hc-month{font-size:15px;font-weight:700;text-transform:capitalize}
   .hist-card .hc-info{color:var(--mut);font-size:11px}
@@ -594,7 +594,7 @@ function renderHistCards(telaId){
     const card=document.createElement('div');
     card.className='hist-card';
     card.innerHTML=`
-      <button class="hc-trash" title="Excluir este mês">🗑</button>
+      <button class="hc-trash" title="Excluir este mês" aria-label="Excluir">✕</button>
       <div class="hc-label">Salva em</div>
       <div class="hc-month">${competenciaLabel(r.competencia)}</div>
       <div class="hc-info">${qtd} produtos · ${r.responsavel||'sem responsável'}</div>
