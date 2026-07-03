@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Produtos — Auditoria</title>
+<title>Controle de Auditoria VX Case</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -170,7 +170,7 @@
 
 <div id="login">
   <div class="login-card">
-    <div class="brand-mark"><span class="dot"></span><span style="font-family:var(--display);font-weight:700;font-size:15px">Controle de Produtos</span></div>
+    <div class="brand-mark"><span class="dot"></span><span style="font-family:var(--display);font-weight:700;font-size:15px">Controle de Auditoria VX Case</span></div>
     <h1>Entrar na auditoria</h1>
     <p>Use seu e-mail e senha de acesso.</p>
     <div class="field"><label>E-mail</label><input id="li-email" type="email" autocomplete="username"></div>
@@ -182,7 +182,7 @@
 
 <div id="app">
   <div class="topbar">
-    <div class="logo"><span class="dot"></span> Controle de Produtos</div>
+    <div class="logo"><span class="dot"></span> Controle de Auditoria VX Case</div>
     <div class="spacer"></div>
     <span class="user-mail" id="user-mail"></span>
     <button class="top-btn" id="theme-btn">🌙 Tema</button>
@@ -316,7 +316,7 @@ $('#theme-btn').onclick=()=>{
 function buildTabs(){
   const wrap=$('#tabs'); wrap.innerHTML='';
   const dash=document.createElement('button');
-  dash.className='tab active'; dash.textContent='Dashboard';
+  dash.className='tab active'; dash.textContent='Análise Auditoria';
   dash.onclick=()=>showView('dash'); wrap.appendChild(dash);
   TELAS.forEach(t=>{
     const b=document.createElement('button');
@@ -585,7 +585,7 @@ function gerarPDF(telaId){
   // cabeçalho
   const respTela=(itens.find(i=>i.responsavel)||{}).responsavel||'—';
   doc.setFontSize(16); doc.setFont(undefined,'bold');
-  doc.text(`Controle de Produtos — ${nome}`, 40, 40);
+  doc.text(`Controle de Auditoria VX Case — ${nome}`, 40, 40);
   doc.setFontSize(10); doc.setFont(undefined,'normal');
   doc.text(`Responsável: ${respTela}`, 40, 58);
   doc.text(`Data da auditoria: ${fmt(d.data_auditoria)}`, 40, 72);
@@ -697,7 +697,7 @@ function pdfHist(telaId, competencia){
   const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
 
   doc.setFontSize(16); doc.setFont(undefined,'bold');
-  doc.text(`Controle de Produtos — ${nome} (${competenciaLabel(competencia)})`, 40, 40);
+  doc.text(`Controle de Auditoria VX Case — ${nome} (${competenciaLabel(competencia)})`, 40, 40);
   doc.setFontSize(10); doc.setFont(undefined,'normal');
   doc.text(`Responsável: ${r.responsavel||'—'}`, 40, 58);
   doc.text(`Data da auditoria: ${fmt(r.data_auditoria)}`, 40, 72);
