@@ -93,6 +93,19 @@
   .panel-head h2{margin:0}
 
   .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  .rod-grid{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+  @media(max-width:900px){ .rod-grid{grid-template-columns:1fr} }
+  .rod-hint{color:var(--mut);font-size:12.5px;margin:0 0 14px}
+  .rod-add{display:flex;gap:8px;margin-top:12px}
+  .rod-add input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--ink)}
+  .rod-controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+  .rod-controls .field{margin:0}
+  .rod-controls input{padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--ink)}
+  .aud-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2)}
+  .aud-item .aud-nome{flex:1;font-weight:600}
+  .aud-item .aud-del{background:transparent;border:none;color:var(--mut);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:6px}
+  .aud-item .aud-del:hover{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+  .rod-repeat{color:var(--danger);font-weight:600}
   .chart-panel{margin-bottom:0}
   .chart-wide{grid-column:1 / -1}
   .chart-box{position:relative;height:280px}
@@ -227,6 +240,39 @@
       </div>
 
       <div id="screens"></div>
+
+      <div class="view hidden" id="view-rodizio">
+        <div class="rod-grid">
+          <div class="panel">
+            <div class="panel-head"><h2>Colaboradores</h2></div>
+            <p class="rod-hint">Cadastre os 6 auditores. Eles entram no sorteio do rodízio mensal.</p>
+            <div id="auditores-list"></div>
+            <div class="rod-add">
+              <input type="text" id="novo-auditor" placeholder="Nome do colaborador" maxlength="60">
+              <button class="btn-sm" id="add-auditor">Adicionar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Rodízio do mês</h2>
+            </div>
+            <div class="rod-controls">
+              <div class="field">
+                <label>Competência (mês do rodízio)</label>
+                <input type="month" id="rod-competencia">
+              </div>
+              <button class="btn-sm" id="sortear-btn">🎲 Sortear rodízio</button>
+            </div>
+            <p class="rod-hint" id="rod-status"></p>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Tela</th><th>Auditor responsável</th><th>Mês anterior</th></tr></thead>
+                <tbody id="rodizio-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -301,7 +347,9 @@ async function startApp(){
   $('#login').style.display='none';
   $('#app').style.display='block';
   buildTabs(); buildScreens();
+  initRodizio();
   await loadAll();
+  await loadAuditores();
   showView('dash');
 }
 
@@ -317,26 +365,34 @@ function buildTabs(){
   const wrap=$('#tabs'); wrap.innerHTML='';
   const dash=document.createElement('button');
   dash.className='tab active'; dash.textContent='Análise Auditoria';
+  dash.dataset.key='dash';
   dash.onclick=()=>showView('dash'); wrap.appendChild(dash);
   TELAS.forEach(t=>{
     const b=document.createElement('button');
-    b.className='tab'; b.textContent=t.nome;
+    b.className='tab'; b.textContent=t.nome; b.dataset.key='tela'+t.id;
     b.onclick=()=>showView('tela'+t.id); wrap.appendChild(b);
   });
+  const rod=document.createElement('button');
+  rod.className='tab'; rod.textContent='Rodízio de Auditores'; rod.dataset.key='rodizio';
+  rod.onclick=()=>showView('rodizio'); wrap.appendChild(rod);
 }
 function showView(key){
-  document.querySelectorAll('.tab').forEach((b,i)=>{
-    b.classList.toggle('active',(key==='dash'&&i===0)||(key==='tela'+i));
+  document.querySelectorAll('#tabs .tab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.key===key);
   });
   $('#view-dash').classList.toggle('hidden', key!=='dash');
+  $('#view-rodizio').classList.toggle('hidden', key!=='rodizio');
   document.querySelectorAll('.screen-view').forEach(v=>{
     v.classList.toggle('hidden', v.dataset.key!==key);
   });
   if(key==='dash') renderDash();
+  if(key==='rodizio') renderRodizio();
 }
 
 let DADOS = {};
 let HIST = {};
+let AUDITORES = [];
+let RODIZIOS = {}; // {competencia: [{tela_id, auditor_nome}]}
 let TELA_LOCKED = {};
 
 // trava (readonly) ou libera os campos de uma tela
@@ -905,6 +961,147 @@ function renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg){
   });
 }
 $('#refresh-btn').onclick=loadAll;
+
+// ================= RODÍZIO DE AUDITORES =================
+function compAtualMes(){ return hoje().slice(0,7); } // AAAA-MM
+function mesAnterior(comp){
+  const [y,m]=comp.split('-').map(Number);
+  const d=new Date(y, m-2, 1); // m-1 é o mês atual (0-based), -1 = anterior
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+async function loadAuditores(){
+  const a=await sb.from('auditores').select('*').order('id',{ascending:true});
+  AUDITORES = (!a.error && a.data) ? a.data : [];
+  const r=await sb.from('rodizio').select('*').order('competencia',{ascending:false});
+  RODIZIOS={};
+  if(!r.error && r.data){
+    r.data.forEach(row=>{
+      if(!RODIZIOS[row.competencia]) RODIZIOS[row.competencia]=[];
+      RODIZIOS[row.competencia].push(row);
+    });
+  }
+}
+
+function renderRodizio(){
+  // lista de auditores
+  const list=$('#auditores-list'); if(list){
+    list.innerHTML='';
+    if(!AUDITORES.length){
+      list.innerHTML='<p class="rod-hint">Nenhum colaborador cadastrado ainda.</p>';
+    } else {
+      AUDITORES.forEach(a=>{
+        const div=document.createElement('div');
+        div.className='aud-item';
+        div.innerHTML=`<span class="aud-nome">${esc(a.nome)}</span><button class="aud-del" title="Remover">✕</button>`;
+        div.querySelector('.aud-del').onclick=()=>delAuditor(a.id, a.nome);
+        list.appendChild(div);
+      });
+    }
+  }
+  // competencia default = mes atual
+  const compInp=$('#rod-competencia');
+  if(compInp && !compInp.value) compInp.value=compAtualMes();
+  renderRodizioTabela();
+}
+
+function renderRodizioTabela(){
+  const comp=$('#rod-competencia')?.value || compAtualMes();
+  const atual=RODIZIOS[comp]||[];
+  const anteriorComp=mesAnterior(comp);
+  const anterior=RODIZIOS[anteriorComp]||[];
+  const mapAnterior={}; anterior.forEach(r=>{ mapAnterior[r.tela_id]=r.auditor_nome; });
+  const mapAtual={}; atual.forEach(r=>{ mapAtual[r.tela_id]=r.auditor_nome; });
+
+  const tb=$('#rodizio-tbody'); if(!tb) return;
+  tb.innerHTML='';
+  TELAS.forEach(t=>{
+    const nomeAtual=mapAtual[t.id]||'—';
+    const nomeAnterior=mapAnterior[t.id]||'—';
+    const repetiu = nomeAtual!=='—' && nomeAtual===nomeAnterior;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><b>${t.nome}</b></td>
+      <td class="${repetiu?'rod-repeat':''}">${esc(nomeAtual)}${repetiu?' ⚠️':''}</td>
+      <td style="color:var(--mut)">${esc(nomeAnterior)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function addAuditor(){
+  const inp=$('#novo-auditor'); const nome=inp.value.trim();
+  if(!nome){ toast('Digite o nome do colaborador.',true); return; }
+  if(AUDITORES.length>=6 && !confirm('Você já tem 6 auditores. Adicionar mais um mesmo assim?')) return;
+  const ins=await sb.from('auditores').insert({nome}).select();
+  if(ins.error){ toast('Erro ao adicionar: '+ins.error.message,true); return; }
+  inp.value='';
+  await loadAuditores(); renderRodizio();
+  toast(`${nome} adicionado.`);
+}
+
+async function delAuditor(id, nome){
+  if(!confirm(`Remover ${nome} da lista de auditores?`)) return;
+  const del=await sb.from('auditores').delete().eq('id',id);
+  if(del.error){ toast('Erro ao remover: '+del.error.message,true); return; }
+  await loadAuditores(); renderRodizio();
+  toast(`${nome} removido.`);
+}
+
+// sorteia telas para auditores sem repetir a tela do mes anterior
+function sortearDistribuicao(nomes, mapAnterior){
+  // mapAnterior: {tela_id: nome que fez no mes passado}
+  const telas=TELAS.map(t=>t.id);
+  for(let tentativa=0; tentativa<500; tentativa++){
+    const embaralhado=[...nomes].sort(()=>Math.random()-0.5);
+    const dist={}; // tela_id -> nome
+    let ok=true;
+    telas.forEach((telaId,idx)=>{
+      const nome=embaralhado[idx % embaralhado.length];
+      dist[telaId]=nome;
+      if(mapAnterior[telaId] && mapAnterior[telaId]===nome) ok=false;
+    });
+    if(ok) return dist;
+  }
+  return null; // nao conseguiu (raro)
+}
+
+async function sortearRodizio(){
+  const comp=$('#rod-competencia')?.value;
+  if(!comp){ toast('Escolha a competência (mês).',true); return; }
+  if(AUDITORES.length<6){ toast('Cadastre 6 colaboradores antes de sortear.',true); return; }
+  const nomes=AUDITORES.slice(0,6).map(a=>a.nome);
+  const anterior=RODIZIOS[mesAnterior(comp)]||[];
+  const mapAnterior={}; anterior.forEach(r=>{ mapAnterior[r.tela_id]=r.auditor_nome; });
+
+  if(RODIZIOS[comp] && RODIZIOS[comp].length){
+    if(!confirm(`Já existe um rodízio para ${comp}. Sortear de novo e substituir?`)) return;
+  }
+
+  const dist=sortearDistribuicao(nomes, mapAnterior);
+  if(!dist){ toast('Não foi possível sortear sem repetição. Tente de novo.',true); return; }
+
+  // apaga rodizio antigo dessa competencia e grava o novo
+  await sb.from('rodizio').delete().eq('competencia',comp);
+  const rows=TELAS.map(t=>({
+    competencia:comp, tela_id:t.id,
+    auditor_id:(AUDITORES.find(a=>a.nome===dist[t.id])||{}).id||null,
+    auditor_nome:dist[t.id],
+  }));
+  const ins=await sb.from('rodizio').insert(rows);
+  if(ins.error){ toast('Erro ao salvar rodízio: '+ins.error.message,true); return; }
+  await loadAuditores();
+  renderRodizioTabela();
+  $('#rod-status').textContent=`Rodízio de ${comp} sorteado com sucesso, sem repetições do mês anterior.`;
+  toast('Rodízio sorteado!');
+}
+
+// liga os eventos do rodizio (uma vez)
+function initRodizio(){
+  $('#add-auditor')?.addEventListener('click', addAuditor);
+  $('#novo-auditor')?.addEventListener('keydown', e=>{ if(e.key==='Enter') addAuditor(); });
+  $('#sortear-btn')?.addEventListener('click', sortearRodizio);
+  $('#rod-competencia')?.addEventListener('change', renderRodizioTabela);
+}
 
 checkSession();
 </script>
