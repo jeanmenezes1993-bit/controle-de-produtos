@@ -108,6 +108,14 @@
   .rod-repeat{color:var(--danger);font-weight:600}
   .chart-panel{margin-bottom:0}
   .chart-wide{grid-column:1 / -1}
+  .evol-row{display:flex;gap:20px;align-items:stretch}
+  .evol-chart{flex:1;min-width:0}
+  .pct-box{width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .pct-label{color:var(--mut);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+  .pct-value{font-family:var(--display);font-size:42px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .pct-sub{color:var(--mut);font-size:11.5px;text-align:center}
+  .pct-ok{color:var(--ok)} .pct-warn{color:var(--warn)} .pct-bad{color:var(--danger)}
+  @media(max-width:820px){ .evol-row{flex-direction:column} .pct-box{width:100%} }
   .chart-box{position:relative;height:280px}
   @media(max-width:820px){ .charts-grid{grid-template-columns:1fr} .chart-wide{grid-column:auto} }
 
@@ -234,7 +242,14 @@
           </div>
           <div class="panel chart-panel chart-wide">
             <h2>Evolução de divergências por mês</h2>
-            <div class="chart-box"><canvas id="chart-evolucao"></canvas></div>
+            <div class="evol-row">
+              <div class="chart-box evol-chart"><canvas id="chart-evolucao"></canvas></div>
+              <div class="pct-box">
+                <div class="pct-label">Erro do mês</div>
+                <div class="pct-value" id="pct-erro">—</div>
+                <div class="pct-sub" id="pct-sub"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -931,6 +946,21 @@ function renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg){
       plugins:{legend:{position:'bottom', labels:{boxWidth:12,boxHeight:12,usePointStyle:true}}}
     }
   });
+
+  // Porcentagem de erro do mês: (divergências + não encontrados) / total auditado
+  const pctEl=$('#pct-erro'), pctSub=$('#pct-sub');
+  if(pctEl){
+    if(!totalItens){
+      pctEl.textContent='—'; pctEl.className='pct-value';
+      if(pctSub) pctSub.textContent='Sem itens auditados';
+    } else {
+      const erros=totalDiverg+totalNaoEnc;
+      const pct=(erros/totalItens)*100;
+      pctEl.textContent=pct.toFixed(1).replace('.',',')+'%';
+      pctEl.className='pct-value '+(pct<=5?'pct-ok':(pct<=15?'pct-warn':'pct-bad'));
+      if(pctSub) pctSub.textContent=`${erros} de ${totalItens} itens com problema`;
+    }
+  }
 
   // 3) Evolucao mensal de divergencias (linha) - usa o historico
   const meses={}; // 'AAAA-MM' -> total divergencias
