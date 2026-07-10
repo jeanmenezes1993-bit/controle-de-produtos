@@ -853,7 +853,8 @@ function renderDash(){
       if(!i.encontrado){
         totalNaoEnc++;
         porTela[t.id].naoEnc++;
-        const prazo=i.proxima_auditoria||addDays(i.data_auditoria,PRAZO_DIAS);
+        // prazo sempre recalculado a partir da data da auditoria (nao usa o valor congelado no banco)
+        const prazo=addDays(i.data_auditoria, PRAZO_DIAS);
         const dr=diasRestantes(prazo);
         if(dr!==null && dr<=7) urgentes++;
         pendentes.push({...i, telaNome:t.nome, prazo, dr});
