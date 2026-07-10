@@ -849,8 +849,8 @@ function renderDash(){
   TELAS.forEach(t=>{
     (DADOS[t.id]?.itens||[]).forEach(i=>{
       totalItens++;
-      if(i.divergencia && i.divergencia!==0){ totalDiverg++; porTela[t.id].diverg++; }
       if(!i.encontrado){
+        // item sumido: problema de LOCALIZAÇÃO. Não conta como divergência.
         totalNaoEnc++;
         porTela[t.id].naoEnc++;
         // prazo sempre recalculado a partir da data da auditoria (nao usa o valor congelado no banco)
@@ -858,6 +858,9 @@ function renderDash(){
         const dr=diasRestantes(prazo);
         if(dr!==null && dr<=7) urgentes++;
         pendentes.push({...i, telaNome:t.nome, prazo, dr});
+      } else if(i.divergencia && i.divergencia!==0){
+        // item achado mas quantidade não bate: problema de CONTAGEM
+        totalDiverg++; porTela[t.id].diverg++;
       }
     });
   });
@@ -959,16 +962,16 @@ function renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg){
       const pct=(erros/totalItens)*100;
       pctEl.textContent=pct.toFixed(1).replace('.',',')+'%';
       pctEl.className='pct-value '+(pct<=5?'pct-ok':(pct<=15?'pct-warn':'pct-bad'));
-      if(pctSub) pctSub.textContent=`${erros} de ${totalItens} itens com problema`;
+      if(pctSub) pctSub.textContent=`${totalNaoEnc} sumidos · ${totalDiverg} contagem`;
     }
   }
 
   // 3) Evolucao mensal de divergencias (linha) - usa o historico
-  const meses={}; // 'AAAA-MM' -> total divergencias
+  const meses={}; // 'AAAA-MM' -> total divergencias (so itens encontrados)
   Object.values(HIST).forEach(lista=>{
     lista.forEach(r=>{
       const itens=Array.isArray(r.itens)?r.itens:[];
-      const dv=itens.filter(i=>i.divergencia && i.divergencia!==0).length;
+      const dv=itens.filter(i=>i.encontrado && i.divergencia && i.divergencia!==0).length;
       meses[r.competencia]=(meses[r.competencia]||0)+dv;
     });
   });
