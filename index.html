@@ -870,7 +870,7 @@ function renderDash(){
     <div class="kpi"><div class="label">Itens auditados</div><div class="value">${totalItens}</div></div>
     <div class="kpi danger"><div class="label">Não encontrados</div><div class="value">${totalNaoEnc}</div></div>
     <div class="kpi warn"><div class="label">Com divergência</div><div class="value">${totalDiverg}</div></div>
-    <div class="kpi warn"><div class="label">Prazo ≤ 7 dias</div><div class="value">${urgentes}</div></div>
+    <div class="kpi warn"><div class="label">Prazo</div><div class="value">${urgentes}</div></div>
     <div class="kpi ok"><div class="label">Encontrados</div><div class="value">${totalItens-totalNaoEnc}</div></div>`;
 
   const tb=$('#dash-tbody'); tb.innerHTML='';
