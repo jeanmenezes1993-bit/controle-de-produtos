@@ -177,6 +177,10 @@
   .btn-sm.danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}
   .btn-sm.danger:hover{background:var(--danger);color:#fff;transform:translateY(-1px)}
 
+  .search-bar{margin-bottom:12px;max-width:320px}
+  .search-bar input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--ink)}
+  .f-prod.f-prod-dup{border-color:var(--danger)!important;background:color-mix(in srgb,var(--danger) 12%,var(--panel2))!important}
+
   .empty{color:var(--mut);text-align:center;padding:36px;font-size:13px}
   .days-left{font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums}
   .days-left.urgent{color:var(--danger)} .days-left.soon{color:var(--warn)} .days-left.calm{color:var(--ok)}
@@ -221,6 +225,7 @@
             <h2>Produtos não encontrados — prazo de 30 dias</h2>
             <button class="btn-sm ghost" id="refresh-btn">Atualizar</button>
           </div>
+          <div class="search-bar"><input type="text" id="dash-search" placeholder="Buscar produto, tela, responsável..."></div>
           <div class="tbl-wrap">
             <table>
               <thead><tr>
@@ -410,6 +415,11 @@ let HIST = {};
 let AUDITORES = [];
 let RODIZIOS = {}; // {competencia: [{tela_id, auditor_nome}]}
 let TELA_LOCKED = {};
+let DIRTY = new Set(); // tela_ids com alteracoes ainda nao salvas
+
+window.addEventListener('beforeunload', e=>{
+  if(DIRTY.size){ e.preventDefault(); e.returnValue=''; }
+});
 
 // trava (readonly) ou libera os campos de uma tela
 function setLock(telaId, locked){
@@ -477,8 +487,12 @@ function buildScreens(){
       <div class="panel">
         <div class="panel-head">
           <h2>${t.nome} — Produtos</h2>
-          <button class="btn-sm ghost" id="pdf2-${t.id}">📄 Baixar tela em PDF</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-sm ghost" id="csv-${t.id}">📊 Baixar CSV</button>
+            <button class="btn-sm ghost" id="pdf2-${t.id}">📄 Baixar tela em PDF</button>
+          </div>
         </div>
+        <div class="search-bar"><input type="text" id="search-${t.id}" placeholder="Buscar produto ou descrição..."></div>
         <div class="tbl-wrap">
           <table>
             <thead><tr>
@@ -499,6 +513,9 @@ function buildScreens(){
       </div>`;
     host.appendChild(v);
 
+    v.addEventListener('input',()=>{ if(!TELA_LOCKED[t.id]) DIRTY.add(t.id); });
+    v.addEventListener('change',()=>{ if(!TELA_LOCKED[t.id]) DIRTY.add(t.id); });
+
     $('#data-'+t.id).addEventListener('change',()=>{
       updateNext(t.id);
       syncDatasVerif(t.id);
@@ -511,6 +528,17 @@ function buildScreens(){
     $('#del-'+t.id).onclick=()=>deleteTela(t.id);
     $('#pdf-'+t.id).onclick=()=>gerarPDF(t.id);
     $('#pdf2-'+t.id).onclick=()=>gerarPDF(t.id);
+    $('#csv-'+t.id).onclick=()=>gerarCSV(t.id);
+    $('#search-'+t.id).addEventListener('input',()=>filtrarTabela(t.id));
+  });
+}
+
+function filtrarTabela(telaId){
+  const termo=$('#search-'+telaId).value.trim().toLowerCase();
+  $('#tbody-'+telaId).querySelectorAll('tr').forEach(tr=>{
+    const prod=tr.querySelector('.f-prod')?.value.toLowerCase()||'';
+    const desc=tr.querySelector('.f-desc')?.value.toLowerCase()||'';
+    tr.style.display = (!termo || prod.includes(termo) || desc.includes(termo)) ? '' : 'none';
   });
 }
 
@@ -575,9 +603,28 @@ function addItemRow(telaId, item){
   };
   dv.onchange=propagaData;
   dv.oninput=propagaData;
-  tr.querySelector('.icon-btn').onclick=()=>tr.remove();
+  const prod=tr.querySelector('.f-prod');
+  prod.addEventListener('input',()=>checkDupProduto(telaId));
+  tr.querySelector('.icon-btn').onclick=()=>{ tr.remove(); checkDupProduto(telaId); };
   tb.appendChild(tr);
   calcDiv(tr);
+  checkDupProduto(telaId);
+}
+
+// marca visualmente produtos repetidos (mesmo nome) dentro da mesma tela
+function checkDupProduto(telaId){
+  const inputs=[...$('#tbody-'+telaId).querySelectorAll('.f-prod')];
+  const contagem={};
+  inputs.forEach(inp=>{
+    const v=inp.value.trim().toLowerCase();
+    if(v) contagem[v]=(contagem[v]||0)+1;
+  });
+  inputs.forEach(inp=>{
+    const v=inp.value.trim().toLowerCase();
+    const dup=v && contagem[v]>1;
+    inp.classList.toggle('f-prod-dup', dup);
+    inp.title = dup ? 'Produto duplicado nesta tela' : '';
+  });
 }
 
 function readTela(telaId){
@@ -604,6 +651,10 @@ function readTela(telaId){
 async function saveTela(telaId){
   const {data, itens, responsavelTela}=readTela(telaId);
   if(!data){ toast('Informe a data da auditoria.',true); return; }
+  const contagem={};
+  itens.forEach(i=>{ const v=i.produto.toLowerCase(); contagem[v]=(contagem[v]||0)+1; });
+  const duplicado=Object.keys(contagem).find(v=>contagem[v]>1);
+  if(duplicado){ toast(`Produto "${duplicado}" está duplicado nesta tela. Corrija antes de salvar.`,true); return; }
   const del=await sb.from('produtos_auditoria').delete().eq('tela_id',telaId);
   if(del.error){ toast('Erro ao salvar: '+del.error.message,true); return; }
   if(itens.length){
@@ -696,6 +747,40 @@ function gerarPDF(telaId){
   const mes=(d.data_auditoria||hoje()).slice(0,7); // AAAA-MM
   doc.save(`${nome.replace(/\s+/g,'_')}_${mes}.pdf`);
   toast(`PDF de ${nome} gerado.`);
+}
+
+// escapa um valor para uma celula CSV (separador ; para abrir certo no Excel PT-BR)
+function csvCell(v){
+  v=(v??'').toString();
+  if(/[;"\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+
+function gerarCSV(telaId){
+  const nome=TELAS.find(t=>t.id===telaId).nome;
+  const d=DADOS[telaId];
+  const itens=d?.itens||[];
+  if(!itens.length){ toast('Nada salvo nesta tela para exportar.',true); return; }
+
+  const head=['Produto','Descrição','Sistema Novo','Físico','Divergência','Encontrado','Motivo','Data verificação'];
+  const linhas=itens.map(i=>[
+    i.produto||'', i.descricao||'',
+    i.sistema_novo??'', i.fisico??'',
+    (i.divergencia??'')===''?'':String(i.divergencia),
+    i.encontrado?'Sim':'Não',
+    i.encontrado?'':(i.motivo||''),
+    i.data_verificacao?fmt(i.data_verificacao):'',
+  ]);
+  const csv=[head,...linhas].map(l=>l.map(csvCell).join(';')).join('\r\n');
+
+  const mes=(d.data_auditoria||hoje()).slice(0,7);
+  const blob=new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`${nome.replace(/\s+/g,'_')}_${mes}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast(`CSV de ${nome} gerado.`);
 }
 
 // ---- Histórico por mês ----
@@ -807,6 +892,7 @@ function pdfHist(telaId, competencia){
 async function loadAll(){
   const {data,error}=await sb.from('produtos_auditoria').select('*').order('id',{ascending:true});
   if(error){ toast('Erro ao carregar: '+error.message,true); return; }
+  DIRTY.clear();
   DADOS={};
   TELAS.forEach(t=>DADOS[t.id]={data_auditoria:hoje(),itens:[],salva:false});
   (data||[]).forEach(r=>{
@@ -884,6 +970,7 @@ function renderDash(){
     else if(p.dr<=15){ cls='soon'; txt=`${p.dr} dias`; }
     else txt=`${p.dr} dias`;
     const tr=document.createElement('tr');
+    tr.dataset.search=[p.produto,p.telaNome,p.responsavel,p.motivo].join(' ').toLowerCase();
     tr.innerHTML=`
       <td><b>${esc(p.produto)}</b></td>
       <td>${p.telaNome}</td>
@@ -894,8 +981,17 @@ function renderDash(){
       <td><span class="days-left ${cls}">${txt}</span></td>`;
     tb.appendChild(tr);
   });
+  filtrarDash();
   renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg);
 }
+
+function filtrarDash(){
+  const termo=$('#dash-search').value.trim().toLowerCase();
+  $('#dash-tbody').querySelectorAll('tr').forEach(tr=>{
+    tr.style.display = (!termo || (tr.dataset.search||'').includes(termo)) ? '' : 'none';
+  });
+}
+$('#dash-search').addEventListener('input', filtrarDash);
 
 let CHARTS={};
 function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
