@@ -180,6 +180,7 @@
   .icon-btn{background:transparent;border:none;color:var(--mut);font-size:16px;padding:4px 8px;border-radius:7px;transition:.15s}
   .icon-btn:hover{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
   .add-row{margin-top:14px}
+  .btn-sm:disabled{opacity:.45;cursor:not-allowed}
   .btn-sm{padding:9px 15px;border:none;border-radius:9px;background:var(--brand);color:#fff;font-weight:600;font-size:13px;transition:.15s}
   .btn-sm:hover{background:var(--brand2);transform:translateY(-1px)}
   .btn-sm.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
@@ -293,7 +294,7 @@
                 <input type="month" id="rod-competencia">
               </div>
               <button class="btn-sm" id="sortear-btn">🎲 Sortear rodízio</button>
-              <button class="btn-sm" id="salvar-rod-btn" style="display:none">💾 Salvar</button>
+              <button class="btn-sm" id="salvar-rod-btn" disabled title="Sorteie o rodízio antes de salvar">💾 Salvar</button>
             </div>
             <p class="rod-hint" id="rod-status"></p>
             <div class="tbl-wrap">
@@ -1164,7 +1165,7 @@ function renderRodizioTabela(){
   if(pendente) mapAtual={...ROD_PENDENTE.dist};
 
   const salvarBtn=$('#salvar-rod-btn');
-  if(salvarBtn) salvarBtn.style.display = pendente ? '' : 'none';
+  if(salvarBtn) salvarBtn.disabled = !pendente;
 
   const tb=$('#rodizio-tbody'); if(!tb) return;
   tb.classList.toggle('rod-pending', !!pendente);
@@ -1273,8 +1274,7 @@ async function salvarRodizio(){
   const del=await sb.from('rodizio').delete().eq('competencia',comp);
   if(del.error){ if(btn) btn.disabled=false; toast('Erro ao salvar rodízio: '+del.error.message,true); return; }
   const ins=await sb.from('rodizio').insert(rows);
-  if(btn) btn.disabled=false;
-  if(ins.error){ toast('Erro ao salvar rodízio: '+ins.error.message,true); return; }
+  if(ins.error){ if(btn) btn.disabled=false; toast('Erro ao salvar rodízio: '+ins.error.message,true); return; }
   ROD_PENDENTE=null;
   await loadAuditores();
   renderRodizioTabela();
