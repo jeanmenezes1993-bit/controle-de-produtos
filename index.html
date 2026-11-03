@@ -107,6 +107,16 @@
   .aud-item .aud-del{background:transparent;border:none;color:var(--mut);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:6px}
   .aud-item .aud-del:hover{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
   .rod-repeat{color:var(--danger);font-weight:600}
+  .rod-pending td:nth-child(2){color:var(--warn);font-weight:600}
+  .rod-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .rod-card{position:relative;background:linear-gradient(160deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px 12px 18px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:border-color .15s}
+  .rod-card:hover{border-color:var(--accent)}
+  .rod-card::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;background:linear-gradient(var(--ok),var(--accent))}
+  .rod-card.sel{border-color:var(--accent)}
+  .rod-card .rc-month{font-family:var(--display);font-size:16px;font-weight:700;text-transform:capitalize;margin-bottom:10px}
+  .rod-card .rc-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 0;border-top:1px solid var(--line)}
+  .rod-card .rc-row span:first-child{color:var(--mut)}
+  .rod-card .rc-row span:last-child{font-weight:600;text-align:right}
   .chart-panel{margin-bottom:0}
   .chart-wide{grid-column:1 / -1}
   .saude-row{display:flex;gap:14px;align-items:center}
@@ -283,6 +293,7 @@
                 <input type="month" id="rod-competencia">
               </div>
               <button class="btn-sm" id="sortear-btn">🎲 Sortear rodízio</button>
+              <button class="btn-sm" id="salvar-rod-btn" style="display:none">💾 Salvar</button>
             </div>
             <p class="rod-hint" id="rod-status"></p>
             <div class="tbl-wrap">
@@ -292,6 +303,10 @@
               </table>
             </div>
           </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Rodízios salvos</h2></div>
+          <div class="rod-cards" id="rod-cards"></div>
         </div>
       </div>
     </div>
@@ -1136,15 +1151,23 @@ function renderRodizio(){
   renderRodizioTabela();
 }
 
+let ROD_PENDENTE=null; // {comp, dist:{tela_id: nome}} — sorteado mas ainda nao salvo
+
 function renderRodizioTabela(){
   const comp=$('#rod-competencia')?.value || compAtualMes();
   const atual=RODIZIOS[comp]||[];
   const anteriorComp=mesAnterior(comp);
   const anterior=RODIZIOS[anteriorComp]||[];
   const mapAnterior={}; anterior.forEach(r=>{ mapAnterior[r.tela_id]=r.auditor_nome; });
-  const mapAtual={}; atual.forEach(r=>{ mapAtual[r.tela_id]=r.auditor_nome; });
+  let mapAtual={}; atual.forEach(r=>{ mapAtual[r.tela_id]=r.auditor_nome; });
+  const pendente = ROD_PENDENTE && ROD_PENDENTE.comp===comp;
+  if(pendente) mapAtual={...ROD_PENDENTE.dist};
+
+  const salvarBtn=$('#salvar-rod-btn');
+  if(salvarBtn) salvarBtn.style.display = pendente ? '' : 'none';
 
   const tb=$('#rodizio-tbody'); if(!tb) return;
+  tb.classList.toggle('rod-pending', !!pendente);
   tb.innerHTML='';
   TELAS.forEach(t=>{
     const nomeAtual=mapAtual[t.id]||'—';
@@ -1156,6 +1179,28 @@ function renderRodizioTabela(){
       <td class="${repetiu?'rod-repeat':''}">${esc(nomeAtual)}${repetiu?' ⚠️':''}</td>
       <td style="color:var(--mut)">${esc(nomeAnterior)}</td>`;
     tb.appendChild(tr);
+  });
+  renderRodizioCards();
+}
+
+// um cartão por mês salvo, mostrando quem ficou com cada tela
+function renderRodizioCards(){
+  const box=$('#rod-cards'); if(!box) return;
+  const comps=Object.keys(RODIZIOS).sort().reverse();
+  box.innerHTML='';
+  if(!comps.length){
+    box.innerHTML='<p class="rod-hint">Nenhum rodízio salvo ainda.</p>';
+    return;
+  }
+  const compSel=$('#rod-competencia')?.value;
+  comps.forEach(comp=>{
+    const map={}; RODIZIOS[comp].forEach(r=>{ map[r.tela_id]=r.auditor_nome; });
+    const card=document.createElement('div');
+    card.className='rod-card'+(comp===compSel?' sel':'');
+    card.innerHTML=`<div class="rc-month">${competenciaLabel(comp)}</div>`+
+      TELAS.map(t=>`<div class="rc-row"><span>${t.nome}</span><span>${esc(map[t.id]||'—')}</span></div>`).join('');
+    card.onclick=()=>{ const inp=$('#rod-competencia'); if(inp){ inp.value=comp; renderRodizioTabela(); } };
+    box.appendChild(card);
   });
 }
 
@@ -1204,26 +1249,37 @@ async function sortearRodizio(){
   const anterior=RODIZIOS[mesAnterior(comp)]||[];
   const mapAnterior={}; anterior.forEach(r=>{ mapAnterior[r.tela_id]=r.auditor_nome; });
 
-  if(RODIZIOS[comp] && RODIZIOS[comp].length){
-    if(!confirm(`Já existe um rodízio para ${comp}. Sortear de novo e substituir?`)) return;
-  }
-
   const dist=sortearDistribuicao(nomes, mapAnterior);
   if(!dist){ toast('Não foi possível sortear sem repetição. Tente de novo.',true); return; }
 
-  // apaga rodizio antigo dessa competencia e grava o novo
-  await sb.from('rodizio').delete().eq('competencia',comp);
+  // só mostra a prévia; grava quando clicar em Salvar
+  ROD_PENDENTE={comp, dist};
+  renderRodizioTabela();
+  $('#rod-status').textContent=`Prévia de ${competenciaLabel(comp)}. Clique em Salvar para confirmar.`;
+}
+
+async function salvarRodizio(){
+  if(!ROD_PENDENTE) return;
+  const {comp, dist}=ROD_PENDENTE;
+  if(RODIZIOS[comp] && RODIZIOS[comp].length){
+    if(!confirm(`Já existe um rodízio salvo para ${competenciaLabel(comp)}. Substituir?`)) return;
+  }
+  const btn=$('#salvar-rod-btn'); if(btn) btn.disabled=true;
   const rows=TELAS.map(t=>({
     competencia:comp, tela_id:t.id,
     auditor_id:(AUDITORES.find(a=>a.nome===dist[t.id])||{}).id||null,
     auditor_nome:dist[t.id],
   }));
+  const del=await sb.from('rodizio').delete().eq('competencia',comp);
+  if(del.error){ if(btn) btn.disabled=false; toast('Erro ao salvar rodízio: '+del.error.message,true); return; }
   const ins=await sb.from('rodizio').insert(rows);
+  if(btn) btn.disabled=false;
   if(ins.error){ toast('Erro ao salvar rodízio: '+ins.error.message,true); return; }
+  ROD_PENDENTE=null;
   await loadAuditores();
   renderRodizioTabela();
-  $('#rod-status').textContent=`Rodízio de ${comp} sorteado com sucesso, sem repetições do mês anterior.`;
-  toast('Rodízio sorteado!');
+  $('#rod-status').textContent='';
+  toast(`Rodízio de ${competenciaLabel(comp)} salvo!`);
 }
 
 // liga os eventos do rodizio (uma vez)
@@ -1231,7 +1287,8 @@ function initRodizio(){
   $('#add-auditor')?.addEventListener('click', addAuditor);
   $('#novo-auditor')?.addEventListener('keydown', e=>{ if(e.key==='Enter') addAuditor(); });
   $('#sortear-btn')?.addEventListener('click', sortearRodizio);
-  $('#rod-competencia')?.addEventListener('change', renderRodizioTabela);
+  $('#salvar-rod-btn')?.addEventListener('click', salvarRodizio);
+  $('#rod-competencia')?.addEventListener('change', ()=>{ $('#rod-status').textContent=''; renderRodizioTabela(); });
 }
 
 checkSession();
