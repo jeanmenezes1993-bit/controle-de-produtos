@@ -113,7 +113,7 @@
   .rod-card:hover{border-color:var(--accent)}
   .rod-card::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;background:linear-gradient(var(--ok),var(--accent))}
   .rod-card.sel{border-color:var(--accent)}
-  .rod-card .rc-month{font-family:var(--display);font-size:16px;font-weight:700;text-transform:capitalize;margin-bottom:10px}
+  .rod-card .rc-month{font-family:var(--display);font-size:16px;font-weight:700;text-transform:capitalize;margin-bottom:10px;padding-right:30px}
   .rod-card .rc-row{display:grid;grid-template-columns:56px 1fr;align-items:center;gap:10px;font-size:12.5px;padding:7px 0;border-top:1px solid var(--line)}
   .rod-card .rc-row span:first-child{color:var(--mut);white-space:nowrap}
   .rod-card .rc-row span:last-child{font-weight:600;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1198,9 +1198,10 @@ function renderRodizioCards(){
     const map={}; RODIZIOS[comp].forEach(r=>{ map[r.tela_id]=r.auditor_nome; });
     const card=document.createElement('div');
     card.className='rod-card'+(comp===compSel?' sel':'');
-    card.innerHTML=`<div class="rc-month">${competenciaLabel(comp)}</div>`+
+    card.innerHTML=`<button class="hc-trash" title="Excluir rodízio">🗑</button><div class="rc-month">${competenciaLabel(comp)}</div>`+
       TELAS.map(t=>`<div class="rc-row"><span>${t.nome}</span><span title="${esc(map[t.id]||'')}">${esc(map[t.id]||'—')}</span></div>`).join('');
     card.onclick=()=>{ const inp=$('#rod-competencia'); if(inp){ inp.value=comp; renderRodizioTabela(); } };
+    card.querySelector('.hc-trash').onclick=e=>{ e.stopPropagation(); excluirRodizio(comp); };
     box.appendChild(card);
   });
 }
@@ -1257,6 +1258,15 @@ async function sortearRodizio(){
   ROD_PENDENTE={comp, dist};
   renderRodizioTabela();
   $('#rod-status').textContent=`Prévia de ${competenciaLabel(comp)}. Clique em Salvar para confirmar.`;
+}
+
+async function excluirRodizio(comp){
+  if(!confirm(`Excluir o rodízio de ${competenciaLabel(comp)}?\n\nEsta ação não pode ser desfeita.`)) return;
+  const del=await sb.from('rodizio').delete().eq('competencia',comp);
+  if(del.error){ toast('Erro ao excluir: '+del.error.message,true); return; }
+  await loadAuditores();
+  renderRodizioTabela();
+  toast(`Rodízio de ${competenciaLabel(comp)} excluído.`);
 }
 
 async function salvarRodizio(){
