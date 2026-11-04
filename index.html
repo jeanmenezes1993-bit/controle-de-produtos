@@ -818,7 +818,7 @@ function renderHistCards(telaId){
     const card=document.createElement('div');
     card.className='hist-card';
     card.innerHTML=`
-      <button class="hc-trash" title="Excluir este mês" aria-label="Excluir">✕</button>
+      <button class="hc-trash" title="Excluir este mês" aria-label="Excluir"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
       <div class="hc-label">Salva em</div>
       <div class="hc-month">${competenciaLabel(r.competencia)}</div>
       <div class="hc-info">${qtd} produtos · ${r.responsavel||'sem responsável'}</div>
@@ -1198,7 +1198,7 @@ function renderRodizioCards(){
     const map={}; RODIZIOS[comp].forEach(r=>{ map[r.tela_id]=r.auditor_nome; });
     const card=document.createElement('div');
     card.className='rod-card'+(comp===compSel?' sel':'');
-    card.innerHTML=`<button class="hc-trash" title="Excluir rodízio">🗑</button><div class="rc-month">${competenciaLabel(comp)}</div>`+
+    card.innerHTML=`<button class="hc-trash" title="Excluir rodízio" aria-label="Excluir"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button><div class="rc-month">${competenciaLabel(comp)}</div>`+
       TELAS.map(t=>`<div class="rc-row"><span>${t.nome}</span><span title="${esc(map[t.id]||'')}">${esc(map[t.id]||'—')}</span></div>`).join('');
     card.onclick=()=>{ const inp=$('#rod-competencia'); if(inp){ inp.value=comp; renderRodizioTabela(); } };
     card.querySelector('.hc-trash').onclick=e=>{ e.stopPropagation(); excluirRodizio(comp); };
