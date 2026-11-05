@@ -1113,8 +1113,8 @@ function renderDash(){
     <div class="kpi"><div class="label">Itens auditados</div><div class="value">${totalItens}</div></div>
     <div class="kpi danger"><div class="label">Não encontrados</div><div class="value">${totalNaoEnc}</div></div>
     <div class="kpi warn"><div class="label">Com divergência</div><div class="value">${totalDiverg}</div></div>
-    <div class="kpi warn"><div class="label">Prazo</div><div class="value">${urgentes}</div></div>
-    <div class="kpi ok"><div class="label">Encontrados</div><div class="value">${totalItens-totalNaoEnc}</div></div>`;
+    <div class="kpi warn"><div class="label">Vencidos ou em 7 dias</div><div class="value">${urgentes}</div></div>
+    <div class="kpi ok"><div class="label">Conferidos sem erro</div><div class="value">${totalItens-totalNaoEnc-totalDiverg}</div></div>`;
 
   const tb=$('#dash-tbody'); tb.innerHTML='';
   $('#dash-empty').style.display = pendentes.length?'none':'block';
@@ -1259,7 +1259,7 @@ function renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg){
   if(ctx2) CHARTS.saude=new Chart(ctx2,{
     type:'doughnut',
     data:{
-      labels:['Encontrados OK','Com divergência','Não encontrados'],
+      labels:['Conferidos sem erro','Com divergência','Não encontrados'],
       datasets:[{
         data:[Math.max(ok,0), totalDiverg, totalNaoEnc],
         backgroundColor:[cOk, cWarn, cDanger],
