@@ -128,6 +128,33 @@
   .pct-ok{color:var(--ok)} .pct-warn{color:var(--warn)} .pct-bad{color:var(--danger)}
   @media(max-width:820px){ .saude-row{flex-direction:column} .pct-box{width:100%} }
   .chart-box{position:relative;height:280px}
+
+  /* destaque da taxa de erro */
+  .taxa{display:grid;grid-template-columns:minmax(260px,1fr) 1.5fr;gap:24px 48px;align-items:center;padding:24px 28px}
+  .taxa-label{font-size:13px;font-weight:500;color:var(--mut);margin:0 0 4px}
+  .taxa-num{font-family:var(--display);font-size:64px;font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .taxa-num.t-ok{color:var(--ok)} .taxa-num.t-warn{color:var(--warn)} .taxa-num.t-bad{color:var(--danger)}
+  .taxa-sub{margin:10px 0 0;font-size:13.5px;color:var(--mut);line-height:1.5}
+  .taxa-sub b{color:var(--ink);font-weight:600}
+  .taxa-delta{display:inline-block;margin-top:8px;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--panel2);color:var(--mut)}
+  .taxa-delta.melhor{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+  .taxa-delta.pior{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent)}
+  .regua{position:relative;padding-top:30px}
+  .regua-bar{display:flex;gap:3px;height:14px}
+  .regua-bar span{border-radius:4px;opacity:.28}
+  .regua-bar span.on{opacity:1}
+  .rb-ok{flex:5;background:var(--ok)} .rb-warn{flex:10;background:var(--warn)} .rb-bad{flex:15;background:var(--danger)}
+  .regua-marca{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;transition:left .5s ease}
+  .regua-marca b{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap}
+  .regua-marca i{width:2px;height:30px;margin-top:2px;background:var(--ink);border-radius:1px}
+  .regua-escala{position:relative;height:16px;margin-top:8px;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+  .regua-escala span{position:absolute;transform:translateX(-50%)}
+  .regua-escala span:first-child{transform:none} .regua-escala span:last-child{transform:translateX(-100%)}
+  .regua-faixas{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--mut)}
+  .regua-faixas span{display:inline-flex;align-items:center;gap:6px}
+  .regua-faixas i{width:8px;height:8px;border-radius:2px}
+  @media(max-width:820px){ .taxa{grid-template-columns:1fr;padding:20px} .taxa-num{font-size:52px} }
+  @media(prefers-reduced-motion:reduce){ .regua-marca{transition:none} }
   @media(max-width:820px){ .charts-grid{grid-template-columns:1fr} .chart-wide{grid-column:auto} }
 
   .audit-meta{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:4px}
@@ -307,6 +334,24 @@
     <div class="sidebar" id="tabs"></div>
     <div class="content">
       <div class="view" id="view-dash">
+        <section class="panel taxa" aria-labelledby="taxa-titulo">
+          <div>
+            <p class="taxa-label" id="taxa-titulo">Taxa de erro</p>
+            <div class="taxa-num" id="pct-erro">—</div>
+            <p class="taxa-sub" id="pct-sub"></p>
+            <span class="taxa-delta" id="pct-delta" hidden></span>
+          </div>
+          <div class="regua" aria-hidden="true">
+            <div class="regua-marca" id="regua-marca" style="left:0"><b id="regua-valor"></b><i></i></div>
+            <div class="regua-bar"><span class="rb-ok"></span><span class="rb-warn"></span><span class="rb-bad"></span></div>
+            <div class="regua-escala"><span style="left:0">0%</span><span style="left:16.667%">5%</span><span style="left:50%">15%</span><span style="left:100%">30%+</span></div>
+            <div class="regua-faixas">
+              <span><i style="background:var(--ok)"></i>Bom, até 5%</span>
+              <span><i style="background:var(--warn)"></i>Atenção, até 15%</span>
+              <span><i style="background:var(--danger)"></i>Crítico, acima de 15%</span>
+            </div>
+          </div>
+        </section>
         <div class="kpis" id="kpi-row"></div>
         <div class="panel">
           <div class="panel-head">
@@ -334,11 +379,6 @@
             <h2>Saúde da auditoria</h2>
             <div class="saude-row">
               <div class="chart-box saude-chart"><canvas id="chart-saude"></canvas></div>
-              <div class="pct-box">
-                <div class="pct-label">Erro do mês</div>
-                <div class="pct-value" id="pct-erro">—</div>
-                <div class="pct-sub" id="pct-sub"></div>
-              </div>
             </div>
           </div>
           <div class="panel chart-panel chart-wide">
@@ -1102,7 +1142,57 @@ function renderDash(){
     tb.appendChild(tr);
   });
   filtrarDash();
+  renderTaxa(totalItens, totalNaoEnc, totalDiverg);
   renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg);
+}
+
+// taxa de erro em destaque: (divergencias + nao encontrados) / itens auditados
+function pctFmt(v){ return v.toFixed(1).replace('.',',')+'%'; }
+function renderTaxa(totalItens, totalNaoEnc, totalDiverg){
+  const num=$('#pct-erro'), sub=$('#pct-sub'), delta=$('#pct-delta');
+  const marca=$('#regua-marca'), valor=$('#regua-valor');
+  const faixas=document.querySelectorAll('.regua-bar span');
+  if(!num) return;
+  faixas.forEach(f=>f.classList.remove('on'));
+  if(!totalItens){
+    num.textContent='—'; num.className='taxa-num';
+    sub.textContent='Nenhum item auditado ainda.';
+    delta.hidden=true; marca.style.visibility='hidden';
+    return;
+  }
+  const erros=totalNaoEnc+totalDiverg;
+  const pct=erros/totalItens*100;
+  const faixa=pct<=5?0:(pct<=15?1:2);
+  num.textContent=pctFmt(pct);
+  num.className='taxa-num '+['t-ok','t-warn','t-bad'][faixa];
+  faixas[faixa].classList.add('on');
+  sub.innerHTML=`<b>${erros}</b> de <b>${totalItens}</b> itens com erro: ${totalNaoEnc} ${totalNaoEnc===1?'não encontrado':'não encontrados'} e ${totalDiverg} com divergência.`;
+  marca.style.visibility='';
+  marca.style.left=Math.min(pct,30)/30*100+'%';
+  valor.textContent=pctFmt(pct);
+
+  // comparacao com o mes anterior salvo no historico
+  const compAtual=hoje().slice(0,7);
+  const porMes={};
+  Object.values(HIST).forEach(lista=>lista.forEach(r=>{
+    if(r.competencia>=compAtual) return;
+    const m=porMes[r.competencia]||(porMes[r.competencia]={t:0,e:0});
+    (Array.isArray(r.itens)?r.itens:[]).forEach(i=>{
+      m.t++; if(!i.encontrado || (i.divergencia && Number(i.divergencia)!==0)) m.e++;
+    });
+  }));
+  const ant=Object.keys(porMes).filter(c=>porMes[c].t>0).sort().pop();
+  if(!ant){ delta.hidden=true; return; }
+  const pAnt=porMes[ant].e/porMes[ant].t*100;
+  const d=Math.round((pct-pAnt)*10)/10;
+  const mesTxt=competenciaLabel(ant);
+  delta.hidden=false;
+  if(d===0){ delta.className='taxa-delta'; delta.textContent=`Igual a ${mesTxt}`; }
+  else {
+    const pts=Math.abs(d).toFixed(1).replace('.',',');
+    delta.className='taxa-delta '+(d<0?'melhor':'pior');
+    delta.textContent=`${pts} ${Math.abs(d)===1?'ponto':'pontos'} ${d<0?'abaixo':'acima'} de ${mesTxt} (${pctFmt(pAnt)})`;
+  }
 }
 
 // abre a tela do produto pendente e destaca a linha dele
@@ -1181,21 +1271,6 @@ function renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg){
       plugins:{legend:{position:'bottom', labels:{boxWidth:12,boxHeight:12,usePointStyle:true}}}
     }
   });
-
-  // Porcentagem de erro do mês: (divergências + não encontrados) / total auditado
-  const pctEl=$('#pct-erro'), pctSub=$('#pct-sub');
-  if(pctEl){
-    if(!totalItens){
-      pctEl.textContent='—'; pctEl.className='pct-value';
-      if(pctSub) pctSub.textContent='Sem itens auditados';
-    } else {
-      const erros=totalDiverg+totalNaoEnc;
-      const pct=(erros/totalItens)*100;
-      pctEl.textContent=pct.toFixed(1).replace('.',',')+'%';
-      pctEl.className='pct-value '+(pct<=5?'pct-ok':(pct<=15?'pct-warn':'pct-bad'));
-      if(pctSub) pctSub.textContent=`${totalNaoEnc} sumidos · ${totalDiverg} contagem`;
-    }
-  }
 
   // 3) Erro por mes (%): (divergencias + nao encontrados) / itens auditados, a partir do historico
   const meses={}; // 'AAAA-MM' -> {total, erros}
