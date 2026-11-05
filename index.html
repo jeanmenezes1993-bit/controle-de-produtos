@@ -201,6 +201,77 @@
   .toast.err{border-left-color:var(--danger)}
 
   @media(max-width:640px){ .view{padding:16px 14px} .kpi .value{font-size:26px} .sidebar{padding:8px} }
+
+  /* ===== Telas de auditoria: ficha de contagem ===== */
+  .screen-view .aud-head{padding:22px 24px 20px}
+  .aud-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .aud-title{margin:0;font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1}
+  .screen-view .save-card{display:inline-flex;flex-direction:row;align-items:center;gap:8px;min-width:0;margin:0;padding:6px 12px 6px 10px;border-radius:999px;background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);box-shadow:none;overflow:visible}
+  .screen-view .save-card::before{display:none}
+  .screen-view .sc-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex-shrink:0}
+  .screen-view .save-card-month{font-family:var(--font);font-size:12.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ok)}
+  .screen-view .save-card.unsaved{background:var(--panel2);border-color:var(--line)}
+  .screen-view .save-card.unsaved .sc-dot{background:var(--warn)}
+  .screen-view .save-card.unsaved .save-card-month{color:var(--mut);font-size:12.5px;font-weight:600}
+
+  .aud-fields{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-top:20px}
+  .aud-fields .field{margin:0}
+  .aud-fields label{display:block;font-size:12px;font-weight:500;color:var(--mut);margin-bottom:6px}
+  .aud-fields input{padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--ink);font-weight:600;min-width:200px;transition:border-color .15s}
+  .aud-fields input:focus{outline:none;border-color:var(--brand)}
+  .screen-view .next-date{padding-bottom:11px}
+
+  .aud-meter{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line)}
+  .meter-bar{display:flex;gap:2px;height:10px;border-radius:5px;overflow:hidden;background:var(--panel2)}
+  .meter-bar span{display:block;height:100%;transition:width .35s ease}
+  .m-ok{background:var(--ok)} .m-div{background:var(--warn)} .m-nf{background:var(--danger)}
+  .meter-legend{display:flex;gap:8px 20px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--mut)}
+  .meter-legend b{color:var(--ink);font-family:var(--mono);font-weight:700;margin-right:4px;font-variant-numeric:tabular-nums}
+  .meter-legend .lg{display:inline-flex;align-items:center;gap:6px}
+  .meter-legend i{display:inline-block;width:8px;height:8px;border-radius:2px}
+  .lg.ok i{background:var(--ok)} .lg.dv i{background:var(--warn)} .lg.nf i{background:var(--danger)}
+  .lg-total{margin-right:auto}
+
+  .hist-strip{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;margin:0 0 18px}
+  .hist-title{font-size:12.5px;font-weight:500;color:var(--mut)}
+  .screen-view .hist-card{flex-direction:row;align-items:center;gap:10px;min-width:0;padding:6px 6px 6px 14px;border-radius:10px;box-shadow:none}
+  .screen-view .hist-card::before{display:none}
+  .screen-view .hist-card .hc-month{font-size:14px}
+  .screen-view .hist-card .hc-info{font-size:12px}
+  .screen-view .hist-card .hc-btns{margin:0;gap:4px}
+  .screen-view .hist-card .hc-btns button{flex:none;padding:5px 10px}
+  .screen-view .hc-trash{position:static;width:28px;height:28px}
+
+  .aud-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .aud-toolbar .search-bar{margin:0;flex:1;min-width:200px;max-width:340px}
+
+  .screen-view th{text-transform:none;letter-spacing:0;font-size:12px;font-weight:600}
+  .screen-view td{padding:8px 10px}
+  .screen-view tbody tr{box-shadow:inset 3px 0 0 transparent}
+  .screen-view tbody tr.row-div{box-shadow:inset 3px 0 0 var(--warn)}
+  .screen-view tbody tr.row-missing{box-shadow:inset 3px 0 0 var(--danger)}
+  .screen-view td input[type=number]{-moz-appearance:textfield;appearance:textfield}
+  .screen-view td input::-webkit-inner-spin-button,.screen-view td input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .screen-view td .f-diverg{border:none;border-radius:999px;font-weight:700;text-align:center}
+  .screen-view td .f-diverg.div-pos{background:color-mix(in srgb,var(--warn) 15%,transparent)}
+  .screen-view td .f-diverg.div-neg{background:color-mix(in srgb,var(--danger) 15%,transparent)}
+  .screen-view td .f-diverg.div-zero{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+  .screen-view .row-missing .f-found{color:var(--danger);font-weight:700}
+  .screen-view td textarea:disabled{background:transparent;border-style:dashed}
+  .screen-view td textarea:disabled::placeholder,.screen-view.locked td textarea::placeholder{color:transparent}
+  .screen-view td .f-prod{min-width:100px}
+  .screen-view td .f-sisnovo,.screen-view td .f-fisico{min-width:64px}
+
+  /* tela salva (travada): campos viram texto */
+  .screen-view.locked td input,.screen-view.locked td select,.screen-view.locked td textarea,
+  .screen-view.locked .aud-fields input{background:transparent;border-color:transparent;color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1;appearance:none;-webkit-appearance:none;resize:none}
+  .screen-view.locked .aud-fields input{padding-left:0}
+  .screen-view.locked input::-webkit-calendar-picker-indicator{display:none}
+  .screen-view.locked .row-missing .f-found{color:var(--danger);-webkit-text-fill-color:var(--danger)}
+
+  .screen-view :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media(max-width:640px){ .layout{align-items:stretch} .aud-title{font-size:24px} .aud-fields input{min-width:0;width:100%} .aud-fields .field{flex:1 1 100%} }
+  @media(prefers-reduced-motion:reduce){ .meter-bar span{transition:none} }
 </style>
 </head>
 <body>
@@ -358,8 +429,8 @@ function setSaveCard(telaId, dateStr){
   const card=$('#savecard-'+telaId), month=$('#savemonth-'+telaId);
   if(!card) return;
   const ma=mesAno(dateStr);
-  if(ma){ card.className='save-card'; month.textContent=ma; }
-  else { card.className='save-card unsaved'; month.textContent='Não salva'; }
+  card.classList.toggle('unsaved', !ma);
+  month.textContent = ma ? `Salva em ${ma}` : 'Não salva';
 }
 
 $('#li-btn').onclick = login;
@@ -442,15 +513,14 @@ function setLock(telaId, locked){
   TELA_LOCKED[telaId]=locked;
   const view=document.querySelector('.screen-view[data-key="tela'+telaId+'"]');
   if(!view) return;
+  view.classList.toggle('locked', locked);
   // trava/libera todos os campos editaveis (menos a divergencia, que ja e readonly)
   view.querySelectorAll('.f-prod,.f-desc,.f-sisnovo,.f-fisico,.f-motivo').forEach(el=>{
     el.readOnly = locked;
-    el.style.opacity = locked ? '.7' : '1';
   });
   // campos de data: readOnly nao bloqueia o calendario, entao usamos disabled
   view.querySelectorAll('.f-dataverif').forEach(el=>{
     el.disabled = locked;
-    el.style.opacity = locked ? '.7' : '1';
   });
   const respTela=$('#resptela-'+telaId); if(respTela) respTela.readOnly = locked;
   view.querySelectorAll('.f-found').forEach(el=>{ el.disabled = locked; });
@@ -472,52 +542,50 @@ function buildScreens(){
     const v=document.createElement('div');
     v.className='view screen-view hidden'; v.dataset.key='tela'+t.id;
     v.innerHTML=`
-      <div class="cards-row">
-        <div class="save-card" id="savecard-${t.id}">
-          <div class="save-card-top">
-            <div>
-              <div class="save-card-label">Salva em</div>
-              <div class="save-card-month" id="savemonth-${t.id}">—</div>
-            </div>
-          </div>
-          <div class="save-card-resp">
-            <label>Responsável da tela</label>
-            <input type="text" id="resptela-${t.id}" placeholder="Nome do responsável">
-          </div>
-          <button class="btn-sm ghost save-card-pdf" id="pdf-${t.id}">📄 Baixar PDF</button>
-        </div>
-        <div class="hist-cards" id="histcards-${t.id}"></div>
-      </div>
-      <div class="panel">
-        <div class="audit-meta">
-          <div class="field">
-            <label>Data da auditoria</label>
-            <input type="date" id="data-${t.id}" value="${hoje()}">
-          </div>
-          <div class="next-date" id="next-${t.id}"></div>
+      <section class="panel aud-head">
+        <div class="aud-top">
+          <h1 class="aud-title">${t.nome}</h1>
+          <div class="save-card unsaved" id="savecard-${t.id}"><span class="sc-dot"></span><span class="save-card-month" id="savemonth-${t.id}">Não salva</span></div>
           <div class="spacer"></div>
           <button class="btn-sm danger" id="del-${t.id}">Excluir tela</button>
           <button class="btn-sm" id="save-${t.id}">Salvar tela</button>
         </div>
-      </div>
-      <div class="panel">
-        <div class="panel-head">
-          <h2>${t.nome} — Produtos</h2>
-          <div style="display:flex;gap:8px">
-            <button class="btn-sm ghost" id="csv-${t.id}">📊 Baixar CSV</button>
-            <button class="btn-sm ghost" id="pdf2-${t.id}">📄 Baixar tela em PDF</button>
+        <div class="aud-fields">
+          <div class="field">
+            <label for="resptela-${t.id}">Responsável</label>
+            <input type="text" id="resptela-${t.id}" placeholder="Nome">
           </div>
+          <div class="field">
+            <label for="data-${t.id}">Data da auditoria</label>
+            <input type="date" id="data-${t.id}" value="${hoje()}">
+          </div>
+          <div class="next-date" id="next-${t.id}"></div>
         </div>
-        <div class="search-bar"><input type="text" id="search-${t.id}" placeholder="Buscar produto ou descrição..."></div>
+        <div class="aud-meter" id="meter-${t.id}">
+          <div class="meter-bar"><span class="m-ok"></span><span class="m-div"></span><span class="m-nf"></span></div>
+          <div class="meter-legend"></div>
+        </div>
+      </section>
+      <div class="hist-strip" id="histstrip-${t.id}">
+        <span class="hist-title">Meses anteriores</span>
+        <div class="hist-cards" id="histcards-${t.id}"></div>
+      </div>
+      <section class="panel">
+        <div class="aud-toolbar">
+          <div class="search-bar"><input type="text" id="search-${t.id}" placeholder="Buscar produto ou descrição" aria-label="Buscar produto"></div>
+          <div class="spacer"></div>
+          <button class="btn-sm ghost" id="csv-${t.id}">Baixar CSV</button>
+          <button class="btn-sm ghost" id="pdf-${t.id}">Baixar PDF</button>
+        </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th style="width:110px">Produto</th>
+              <th style="width:130px">Produto</th>
               <th style="min-width:340px">Descrição do Produto</th>
               <th style="width:90px">Sistema Novo</th>
-              <th style="width:80px">Físico</th>
+              <th style="width:90px">Físico</th>
               <th style="width:90px">Divergência</th>
-              <th style="width:100px">Encontrado?</th>
+              <th style="width:100px">Encontrado</th>
               <th style="min-width:180px">Motivo</th>
               <th style="width:130px">Data verificação</th>
               <th style="width:40px"></th>
@@ -526,11 +594,11 @@ function buildScreens(){
           </table>
         </div>
         <button class="btn-sm ghost add-row" id="add-${t.id}">+ Adicionar produto</button>
-      </div>`;
+      </section>`;
     host.appendChild(v);
 
-    v.addEventListener('input',()=>{ if(!TELA_LOCKED[t.id]) DIRTY.add(t.id); });
-    v.addEventListener('change',()=>{ if(!TELA_LOCKED[t.id]) DIRTY.add(t.id); });
+    v.addEventListener('input',()=>{ if(!TELA_LOCKED[t.id]) DIRTY.add(t.id); atualizarResumo(t.id); });
+    v.addEventListener('change',()=>{ if(!TELA_LOCKED[t.id]) DIRTY.add(t.id); atualizarResumo(t.id); });
 
     $('#data-'+t.id).addEventListener('change',()=>{
       updateNext(t.id);
@@ -543,7 +611,6 @@ function buildScreens(){
     };
     $('#del-'+t.id).onclick=()=>deleteTela(t.id);
     $('#pdf-'+t.id).onclick=()=>gerarPDF(t.id);
-    $('#pdf2-'+t.id).onclick=()=>gerarPDF(t.id);
     $('#csv-'+t.id).onclick=()=>gerarCSV(t.id);
     $('#search-'+t.id).addEventListener('input',()=>filtrarTabela(t.id));
   });
@@ -561,7 +628,32 @@ function filtrarTabela(telaId){
 function updateNext(id){
   const d=$('#data-'+id).value;
   $('#next-'+id).innerHTML = d
-    ? `Próxima auditoria: <b>${fmt(addDays(d,PRAZO_DIAS))}</b> (em ${PRAZO_DIAS} dias)` : '';
+    ? `Próxima auditoria: <b>${fmt(addDays(d,PRAZO_DIAS))}</b>` : '';
+}
+
+// barra de conferencia: conferidos x divergencia x nao encontrados, ao vivo
+function atualizarResumo(telaId){
+  const m=$('#meter-'+telaId), tb=$('#tbody-'+telaId);
+  if(!m||!tb) return;
+  let tot=0, nf=0, dv=0;
+  tb.querySelectorAll('tr').forEach(tr=>{
+    const missing=tr.querySelector('.f-found').value==='0';
+    const d=tr.querySelector('.f-diverg').value;
+    const diverg=!missing && d!=='' && Number(d)!==0;
+    tr.classList.toggle('row-div', diverg);
+    if(!tr.querySelector('.f-prod').value.trim()) return;
+    tot++;
+    if(missing) nf++; else if(diverg) dv++;
+  });
+  const ok=tot-nf-dv;
+  const seg=(cls,n)=>{ const s=m.querySelector(cls); s.style.width=tot?(n/tot*100)+'%':'0'; s.style.display=n?'':'none'; };
+  seg('.m-ok',ok); seg('.m-div',dv); seg('.m-nf',nf);
+  m.querySelector('.meter-legend').innerHTML = tot ? `
+    <span class="lg-total"><b>${tot}</b>${tot===1?'produto':'produtos'}</span>
+    <span class="lg ok"><i></i><b>${ok}</b>conferidos</span>
+    <span class="lg dv"><i></i><b>${dv}</b>com divergência</span>
+    <span class="lg nf"><i></i><b>${nf}</b>não ${nf===1?'encontrado':'encontrados'}</span>`
+    : '<span class="lg-total">Nenhum produto lançado</span>';
 }
 
 // copia a data da auditoria para todas as linhas de "Data verificação" da tela
@@ -577,7 +669,7 @@ function calcDiv(tr){
   const out=tr.querySelector('.f-diverg');
   if(sn===''&&fi===''){ out.value=''; out.className='f-diverg'; return; }
   const d=(Number(sn)||0)-(Number(fi)||0);
-  out.value=d;
+  out.value = d>0 ? '+'+d : d;
   out.className='f-diverg '+(d===0?'div-zero':(d>0?'div-pos':'div-neg'));
 }
 
@@ -621,10 +713,11 @@ function addItemRow(telaId, item){
   dv.oninput=propagaData;
   const prod=tr.querySelector('.f-prod');
   prod.addEventListener('input',()=>checkDupProduto(telaId));
-  tr.querySelector('.icon-btn').onclick=()=>{ tr.remove(); checkDupProduto(telaId); };
+  tr.querySelector('.icon-btn').onclick=()=>{ tr.remove(); checkDupProduto(telaId); DIRTY.add(telaId); atualizarResumo(telaId); };
   tb.appendChild(tr);
   calcDiv(tr);
   checkDupProduto(telaId);
+  atualizarResumo(telaId);
 }
 
 // marca visualmente produtos repetidos (mesmo nome) dentro da mesma tela
@@ -813,19 +906,20 @@ function renderHistCards(telaId){
   const compAtual=(DADOS[telaId]?.data_auditoria||'').slice(0,7);
   const outras=lista.filter(r=>r.competencia!==compAtual);
   host.innerHTML='';
+  const strip=$('#histstrip-'+telaId); if(strip) strip.style.display = outras.length ? '' : 'none';
   outras.forEach(r=>{
     const qtd=Array.isArray(r.itens)?r.itens.length:0;
     const card=document.createElement('div');
     card.className='hist-card';
+    card.title=`Responsável: ${r.responsavel||'—'}`;
     card.innerHTML=`
-      <button class="hc-trash" title="Excluir este mês" aria-label="Excluir"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
-      <div class="hc-label">Salva em</div>
       <div class="hc-month">${competenciaLabel(r.competencia)}</div>
-      <div class="hc-info">${qtd} produtos · ${r.responsavel||'sem responsável'}</div>
+      <div class="hc-info">${qtd} ${qtd===1?'produto':'produtos'}</div>
       <div class="hc-btns">
-        <button class="btn-sm ghost">👁 Ver</button>
-        <button class="btn-sm ghost">📄 PDF</button>
-      </div>`;
+        <button class="btn-sm ghost">Ver</button>
+        <button class="btn-sm ghost">PDF</button>
+      </div>
+      <button class="hc-trash" title="Excluir este mês" aria-label="Excluir ${competenciaLabel(r.competencia)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>`;
     card.querySelector('.hc-trash').onclick=()=>deleteHist(telaId, r.competencia);
     const btns=card.querySelectorAll('.hc-btns button');
     btns[0].onclick=()=>verHist(telaId, r.competencia);
