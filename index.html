@@ -168,6 +168,11 @@
   tbody tr{transition:background .12s}
   tbody tr:hover{background:color-mix(in srgb,var(--brand) 5%,transparent)}
   tbody tr:last-child td{border-bottom:none}
+  #dash-tbody tr{cursor:pointer}
+  #dash-tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  @keyframes rowFlash{0%,60%{outline-color:var(--accent)}100%{outline-color:transparent}}
+  tr.row-flash{outline:2px solid transparent;outline-offset:-2px;animation:rowFlash 2.2s ease-out}
+  @media(prefers-reduced-motion:reduce){ tr.row-flash{animation:none;outline-color:var(--accent)} }
   td input,td select,td textarea{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink);transition:border-color .15s}
   td input:focus,td select:focus,td textarea:focus{outline:none;border-color:var(--brand)}
   td textarea{resize:vertical;min-height:36px}
@@ -259,7 +264,7 @@
   .screen-view td .f-diverg.div-zero{background:color-mix(in srgb,var(--ok) 12%,transparent)}
   .screen-view .row-missing .f-found{color:var(--danger);font-weight:700}
   .screen-view td textarea:disabled{background:transparent;border-style:dashed}
-  .screen-view td textarea:disabled::placeholder,.screen-view.locked td textarea::placeholder{color:transparent}
+  .screen-view td textarea:disabled::placeholder,.screen-view.locked td textarea::placeholder{color:transparent;-webkit-text-fill-color:transparent}
   .screen-view td .f-prod{min-width:100px}
   .screen-view td .f-sisnovo,.screen-view td .f-fisico{min-width:64px}
 
@@ -337,7 +342,7 @@
             </div>
           </div>
           <div class="panel chart-panel chart-wide">
-            <h2>Evolução de divergências por mês</h2>
+            <h2>Erro por mês</h2>
             <div class="chart-box"><canvas id="chart-evolucao"></canvas></div>
           </div>
         </div>
@@ -1055,7 +1060,7 @@ function renderDash(){
         const prazo=addDays(i.data_auditoria, PRAZO_DIAS);
         const dr=diasRestantes(prazo);
         if(dr!==null && dr<=7) urgentes++;
-        pendentes.push({...i, telaNome:t.nome, prazo, dr});
+        pendentes.push({...i, telaId:t.id, telaNome:t.nome, prazo, dr});
       } else if(i.divergencia && i.divergencia!==0){
         // item achado mas quantidade não bate: problema de CONTAGEM
         totalDiverg++; porTela[t.id].diverg++;
@@ -1082,6 +1087,10 @@ function renderDash(){
     else txt=`${p.dr} dias`;
     const tr=document.createElement('tr');
     tr.dataset.search=[p.produto,p.telaNome,p.responsavel,p.motivo].join(' ').toLowerCase();
+    tr.tabIndex=0;
+    tr.title=`Abrir ${p.telaNome}`;
+    tr.onclick=()=>abrirProduto(p.telaId, p.produto);
+    tr.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); abrirProduto(p.telaId, p.produto); } };
     tr.innerHTML=`
       <td><b>${esc(p.produto)}</b></td>
       <td>${p.telaNome}</td>
@@ -1094,6 +1103,20 @@ function renderDash(){
   });
   filtrarDash();
   renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg);
+}
+
+// abre a tela do produto pendente e destaca a linha dele
+function abrirProduto(telaId, produto){
+  showView('tela'+telaId);
+  const busca=$('#search-'+telaId);
+  if(busca && busca.value){ busca.value=''; filtrarTabela(telaId); }
+  const alvo=(produto||'').trim().toLowerCase();
+  const tr=[...$('#tbody-'+telaId).querySelectorAll('tr')]
+    .find(r=>r.querySelector('.f-prod').value.trim().toLowerCase()===alvo);
+  if(!tr) return;
+  tr.scrollIntoView({block:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  tr.classList.remove('row-flash'); void tr.offsetWidth; tr.classList.add('row-flash');
+  setTimeout(()=>tr.classList.remove('row-flash'), 2300);
 }
 
 function filtrarDash(){
@@ -1174,31 +1197,47 @@ function renderCharts(porTela, totalItens, totalNaoEnc, totalDiverg){
     }
   }
 
-  // 3) Evolucao mensal de divergencias (linha) - usa o historico
-  const meses={}; // 'AAAA-MM' -> total divergencias (so itens encontrados)
+  // 3) Erro por mes (%): (divergencias + nao encontrados) / itens auditados, a partir do historico
+  const meses={}; // 'AAAA-MM' -> {total, erros}
   Object.values(HIST).forEach(lista=>{
     lista.forEach(r=>{
       const itens=Array.isArray(r.itens)?r.itens:[];
-      const dv=itens.filter(i=>i.encontrado && i.divergencia && i.divergencia!==0).length;
-      meses[r.competencia]=(meses[r.competencia]||0)+dv;
+      const m=meses[r.competencia]||(meses[r.competencia]={total:0,erros:0});
+      itens.forEach(i=>{
+        m.total++;
+        if(!i.encontrado || (i.divergencia && Number(i.divergencia)!==0)) m.erros++;
+      });
     });
   });
-  const comps=Object.keys(meses).sort();
+  const comps=Object.keys(meses).filter(c=>meses[c].total>0).sort();
+  const pctMes=c=>Math.round(meses[c].erros/meses[c].total*1000)/10;
+  const fmtPct=v=>v.toFixed(1).replace('.',',')+'%';
   const ctx3=document.getElementById('chart-evolucao');
   if(ctx3) CHARTS.evol=new Chart(ctx3,{
     type:'line',
     data:{
       labels:comps.map(c=>competenciaLabel(c)),
       datasets:[{
-        label:'Divergências', data:comps.map(c=>meses[c]),
+        label:'Erro', data:comps.map(pctMes),
         borderColor:cBrand, backgroundColor:'transparent',
-        pointBackgroundColor:cBrand, pointRadius:5, tension:.3, borderWidth:2.5
+        pointBackgroundColor:comps.map(c=>{ const v=pctMes(c); return v<=5?cOk:(v<=15?cWarn:cDanger); }),
+        pointBorderColor:css('--panel'), pointBorderWidth:2,
+        pointRadius:6, pointHoverRadius:8, tension:.3, borderWidth:2.5
       }]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      scales:{x:{grid:{display:false}}, y:{grid:{color:line}, ticks:{precision:0}, beginAtZero:true}},
-      plugins:{legend:{display:false}}
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:line}, beginAtZero:true, suggestedMax:20, ticks:{callback:v=>v+'%'}}
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const c=comps[ctx.dataIndex], m=meses[c];
+          return `${fmtPct(ctx.parsed.y)} de erro (${m.erros} de ${m.total} itens)`;
+        }}}
+      }
     }
   });
 }
